@@ -1,0 +1,10 @@
+G:\04 rust\PDSD-v0.2\target\debug\deps\owned_ttf_parser-dc2a50f686a70d86.d: C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\lib.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\convert.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\owned.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\preparse.rs
+
+G:\04 rust\PDSD-v0.2\target\debug\deps\libowned_ttf_parser-dc2a50f686a70d86.rlib: C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\lib.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\convert.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\owned.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\preparse.rs
+
+G:\04 rust\PDSD-v0.2\target\debug\deps\libowned_ttf_parser-dc2a50f686a70d86.rmeta: C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\lib.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\convert.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\owned.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\preparse.rs
+
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\lib.rs:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\convert.rs:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\owned.rs:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\owned_ttf_parser-0.25.1\src\preparse.rs:

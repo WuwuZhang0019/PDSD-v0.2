@@ -1,0 +1,9 @@
+G:\04 rust\PDSD-v0.2\target\debug\deps\epaint_default_fonts-cf16a14781ecd9fe.d: C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\lib.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\../fonts/Hack-Regular.ttf C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\../fonts/NotoEmoji-Regular.ttf C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\../fonts/Ubuntu-Light.ttf C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\../fonts/emoji-icon-font.ttf
+
+G:\04 rust\PDSD-v0.2\target\debug\deps\libepaint_default_fonts-cf16a14781ecd9fe.rmeta: C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\lib.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\../fonts/Hack-Regular.ttf C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\../fonts/NotoEmoji-Regular.ttf C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\../fonts/Ubuntu-Light.ttf C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\../fonts/emoji-icon-font.ttf
+
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\lib.rs:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\../fonts/Hack-Regular.ttf:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\../fonts/NotoEmoji-Regular.ttf:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\../fonts/Ubuntu-Light.ttf:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\epaint_default_fonts-0.32.3\src\../fonts/emoji-icon-font.ttf:

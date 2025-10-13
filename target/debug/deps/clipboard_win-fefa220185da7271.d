@@ -1,0 +1,12 @@
+G:\04 rust\PDSD-v0.2\target\debug\deps\clipboard_win-fefa220185da7271.d: C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\lib.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\options.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\sys.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\types.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\formats.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\html.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\raw.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\utils.rs
+
+G:\04 rust\PDSD-v0.2\target\debug\deps\libclipboard_win-fefa220185da7271.rmeta: C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\lib.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\options.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\sys.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\types.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\formats.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\html.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\raw.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\utils.rs
+
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\lib.rs:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\options.rs:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\sys.rs:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\types.rs:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\formats.rs:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\html.rs:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\raw.rs:
+C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\clipboard-win-5.4.1\src\utils.rs:
