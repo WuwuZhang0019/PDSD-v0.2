@@ -1,5 +1,6 @@
 /// 应用状态管理模块
 use std::sync::{Arc, Mutex};
+use serde::{Serialize, Deserialize};
 
 /// 应用程序的全局状态
 #[derive(Clone)]
@@ -27,7 +28,7 @@ impl AppState {
 }
 
 /// 项目信息
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct ProjectInfo {
     /// 项目名称
     pub name: String,
@@ -42,7 +43,7 @@ pub struct ProjectInfo {
 }
 
 /// 应用配置
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct AppConfig {
     /// 主题设置
     pub theme: Theme,
@@ -57,7 +58,7 @@ pub struct AppConfig {
 }
 
 /// UI主题
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Theme {
     /// 浅色主题
     Light,
@@ -74,7 +75,7 @@ impl Default for Theme {
 }
 
 /// 计算结果
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct CalculationResults {
     /// 总功率
     pub total_power: Option<f64>,
@@ -93,7 +94,7 @@ pub struct CalculationResults {
 }
 
 // 导入GraphNode类型
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GraphNode {
     /// 节点ID
     pub id: String,

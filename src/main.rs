@@ -1,5 +1,5 @@
 use eframe::egui;
-mod application;
+use crate::application::PDSDApp;
 
 /// 程序入口点
 fn main() -> Result<(), eframe::Error> {
