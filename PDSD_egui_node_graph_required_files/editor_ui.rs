@@ -104,12 +104,10 @@ where
         user_state: &mut UserState,
         prepend_responses: Vec<NodeResponse<UserResponse, NodeData>>,
     ) -> GraphResponse<UserResponse, NodeData> {
-        // This causes the graph editor to use as much free space as it can.
-        // (so for windows it will use up to the resizeably set limit
-        // and for a Panel it will fill it completely)
-        // 这会使图编辑器使用尽可能多的可用空间
-        // (对于窗口会使用到可调整大小的限制
-        // 对于面板则会完全填充)
+        // 这使图形编辑器尽可能使用可用空间
+        // (对于窗口，它将使用可调整大小设置的限制
+        // 对于面板，它将完全填充)
+
         let editor_rect = ui.max_rect();
         let resp = ui.allocate_rect(editor_rect, Sense::hover());
 
@@ -119,44 +117,41 @@ where
         let mut cursor_in_editor = resp.hovered();
         let mut cursor_in_finder = false;
 
-        // Gets filled with the node metrics as they are drawn
-        // 随着节点的绘制，这里会填充节点的度量信息
+        // 在绘制节点时填充节点度量信息
+
         let mut port_locations = PortLocations::new();
         let mut node_rects = NodeRects::new();
 
-        // The responses returned from node drawing have side effects that are best
-        // executed at the end of this function.
-        // 从节点绘制返回的响应具有副作用，最好在此函数末尾执行
+        // 节点绘制返回的响应有副作用，最好在函数末尾执行
+       
         let mut delayed_responses: Vec<NodeResponse<UserResponse, NodeData>> = prepend_responses;
 
-        // Used to detect when the background was clicked
         // 用于检测背景何时被点击
+        
         let mut click_on_background = false;
 
-        // Used to detect drag events in the background
         // 用于检测背景中的拖动事件
+       
         let mut drag_started_on_background = false;
         let mut drag_released_on_background = false;
 
         debug_assert_eq!(
             self.node_order.iter().copied().collect::<HashSet<_>>(),
             self.graph.iter_nodes().collect::<HashSet<_>>(),
-            "The node_order field of the GraphEditorself was left in an \
-        inconsistent self. It has either more or less values than the graph."
+            "GraphEditor的node_order字段处于不一致状态。它拥有的节点数量与图形中的节点数量不匹配。"
         );
 
-        // Allocate rect before the nodes, otherwise this will block the interaction
-        // with the nodes.
-        // 在节点之前分配矩形，否则这将阻塞与节点的交互
+        // 在节点之前分配矩形，否则会阻塞与节点的交互
+        
 
-        // Check if the distance between the port and the mouse is the distance to connect
-        // 检查端口与鼠标之间的距离是否为连接距离
+        // 检查端口与鼠标之间的距离是否达到连接距离
+        
 
-        // Don't allow self-loops
-        // 不允许自环
+        // 不允许自环连接
+        
 
-        // Actions executed later
         // 稍后执行的操作
+        
         let r = ui.allocate_rect(ui.min_rect(), Sense::click().union(Sense::drag()));
         if r.clicked() {
             click_on_background = true;
@@ -166,7 +161,7 @@ where
             drag_released_on_background = true;
         }
 
-        /* Draw nodes */
+        /* 绘制节点 */
         for node_id in self.node_order.iter().copied() {
             let responses = GraphNodeWidget {
                 position: self.node_positions.get_mut(node_id).unwrap(),
@@ -183,11 +178,11 @@ where
             }
             .show(ui, user_state);
 
-            // Actions executed later
+            // 稍后执行的操作
             delayed_responses.extend(responses);
         }
 
-        /* Draw the node finder, if open */
+        /* 如果打开了节点查找器，则绘制它 */
         let mut should_close_node_finder = false;
         if let Some(ref mut node_finder) = self.node_finder {
             let mut node_finder_area = Area::new("node_finder").order(Order::Foreground);
@@ -211,8 +206,8 @@ where
                     delayed_responses.push(NodeResponse::CreatedNode(new_node));
                 }
                 let finder_rect = ui.min_rect();
-                // If the cursor is not in the main editor, check if the cursor is in the finder
-                // if the cursor is in the finder, then we can consider that also in the editor.
+                // 如果光标不在主编辑器中，检查光标是否在查找器中
+                // 如果光标在查找器中，则我们可以认为它也在编辑器中
                 if finder_rect.contains(cursor_pos) {
                     cursor_in_editor = true;
                     cursor_in_finder = true;
@@ -223,13 +218,13 @@ where
             self.node_finder = None;
         }
 
-        /* Draw connections */
+        /* 绘制连接 */
         if let Some((_, ref locator)) = self.connection_in_progress {
             let port_type = self.graph.any_param_type(*locator).unwrap();
             let connection_color = port_type.data_type_color(user_state);
             let start_pos = port_locations[locator];
 
-            // Find a port to connect to
+            // 查找要连接的端口
             fn snap_to_ports<
                 NodeData,
                 UserState,
@@ -303,10 +298,10 @@ where
             draw_connection(ui.painter(), src_pos, dst_pos, connection_color);
         }
 
-        /* Handle responses from drawing nodes */
+        /* 处理绘制节点产生的响应 */
 
-        // Some responses generate additional responses when processed. These
-        // are stored here to report them back to the user.
+        // 一些响应在处理时会生成额外的响应。这些响应
+        // 存储在这里，以便报告给用户
         let mut extra_responses: Vec<NodeResponse<UserResponse, NodeData>> = Vec::new();
 
         for response in delayed_responses.iter() {
@@ -318,28 +313,27 @@ where
                     self.graph.add_connection(*output, *input)
                 }
                 NodeResponse::CreatedNode(_) => {
-                    //Convenience NodeResponse for users
+                    // 为用户提供的便利NodeResponse
                 }
                 NodeResponse::SelectNode(node_id) => {
                     self.selected_nodes = Vec::from([*node_id]);
                 }
                 NodeResponse::DeleteNodeUi(node_id) => {
                     let (node, disc_events) = self.graph.remove_node(*node_id);
-                    // Pass the disconnection responses first so user code can perform cleanup
-                    // before node removal response.
+                    // 首先传递断开连接的响应，以便用户代码可以在节点移除响应之前执行清理
                     extra_responses.extend(
                         disc_events
                             .into_iter()
                             .map(|(input, output)| NodeResponse::DisconnectEvent { input, output }),
                     );
-                    // Pass the full node as a response so library users can
-                    // listen for it and get their user data.
+                    // 将完整节点作为响应传递，以便库用户可以
+                    // 监听它并获取他们的用户数据
                     extra_responses.push(NodeResponse::DeleteNodeFull {
                         node_id: *node_id,
                         node,
                     });
                     self.node_positions.remove(*node_id);
-                    // Make sure to not leave references to old nodes hanging
+                    // 确保不会保留对旧节点的引用
                     self.selected_nodes.retain(|id| *id != *node_id);
                     self.node_order.retain(|id| *id != *node_id);
                 }
@@ -354,13 +348,13 @@ where
                         .node_order
                         .iter()
                         .position(|id| *id == *node_id)
-                        .expect("Node to be raised should be in `node_order`");
+                        .expect("要提升的节点应该在`node_order`中");
                     self.node_order.remove(old_pos);
                     self.node_order.push(*node_id);
                 }
                 NodeResponse::MoveNode { node, drag_delta } => {
                     self.node_positions[*node] += *drag_delta;
-                    // Handle multi-node selection movement
+                    // 处理多节点选择移动
                     if self.selected_nodes.contains(node) && self.selected_nodes.len() > 1 {
                         for n in self.selected_nodes.iter().copied() {
                             if n != *node {
@@ -370,15 +364,15 @@ where
                     }
                 }
                 NodeResponse::User(_) => {
-                    // These are handled by the user code.
+                    // 这些由用户代码处理
                 }
                 NodeResponse::DeleteNodeFull { .. } => {
-                    unreachable!("The UI should never produce a DeleteNodeFull event.")
+                    unreachable!("UI永远不应该产生DeleteNodeFull事件")
                 }
             }
         }
 
-        // Handle box selection
+        // 处理框选
         if let Some(box_start) = self.ongoing_box_selection {
             let selection_rect = Rect::from_two_pos(cursor_pos, box_start);
             let bg_color = Color32::from_rgba_unmultiplied(200, 200, 200, 20);
@@ -402,14 +396,13 @@ where
                 .collect();
         }
 
-        // Push any responses that were generated during response handling.
-        // These are only informative for the end-user and need no special
-        // treatment here.
+        // 推送在响应处理期间生成的任何响应
+        // 这些仅对最终用户提供信息，无需在此处进行特殊处理
         delayed_responses.extend(extra_responses);
 
-        /* Mouse input handling */
+        /* 鼠标输入处理 */
 
-        // This locks the context, so don't hold on to it for too long.
+        // 这会锁定上下文，所以不要长时间持有
         let mouse = &ui.ctx().input(|i| i.pointer.clone());
 
         if mouse.any_released() && self.connection_in_progress.is_some() {
@@ -427,8 +420,7 @@ where
             self.pan_zoom.pan += ui.ctx().input(|i| i.pointer.delta());
         }
 
-        // Deselect and deactivate finder if the editor backround is clicked,
-        // *or* if the the mouse clicks off the ui
+        // 如果编辑器背景被点击，或者鼠标点击了UI之外的区域，则取消选择并停用查找器
         if click_on_background || (mouse.any_click() && !cursor_in_editor) {
             self.selected_nodes = Vec::new();
             self.node_finder = None;
@@ -499,8 +491,8 @@ where
         Self::show_graph_node(self, &mut child_ui, user_state)
     }
 
-    /// Draws this node. Also fills in the list of port locations with all of its ports.
-    /// Returns responses indicating multiple events.
+    /// 绘制此节点。同时填充所有端口的位置列表。
+    /// 返回指示多个事件的响应。
     fn show_graph_node(
         self,
         ui: &mut Ui,
@@ -521,7 +513,7 @@ where
 
         ui.visuals_mut().widgets.noninteractive.fg_stroke = Stroke::new(2.0, text_color);
 
-        // Preallocate shapes to paint below contents
+        // 预分配要绘制在内容下方的形状
         // 预分配要绘制在内容下方的形状
         let outline_shape = ui.painter().add(Shape::Noop);
         let background_shape = ui.painter().add(Shape::Noop);
@@ -581,13 +573,11 @@ where
             for (param_name, param_id) in inputs {
                 if self.graph[param_id].shown_inline {
                     let height_before = ui.min_rect().bottom();
-                    // NOTE: We want to pass the `user_data` to
-                    // `value_widget`, but we can't since that would require
-                    // borrowing the graph twice. Here, we make the
-                    // assumption that the value is cheaply replaced, and
-                    // use `std::mem::take` to temporarily replace it with a
-                    // dummy value. This requires `ValueType` to implement
-                    // Default, but results in a totally safe alternative.
+                    // 注意：我们希望将`user_data`传递给
+                    // `value_widget`，但不能这样做，因为这需要
+                    // 借用graph两次。在这里，我们假设值可以廉价地替换，
+                    // 并使用`std::mem::take`暂时用一个虚拟值替换它。
+                    // 这要求`ValueType`实现Default，但结果是完全安全的替代方案。
                     let mut value = std::mem::take(&mut self.graph[param_id].value);
 
                     if self.graph.connection(param_id).is_some() {
@@ -698,7 +688,7 @@ where
 
             let resp = ui.allocate_rect(port_rect, sense);
 
-            // Check if the distance between the port and the mouse is the distance to connect
+            // 检查端口与鼠标之间的距离是否达到连接距离
             let close_enough = if let Some(pointer_pos) = ui.ctx().pointer_hover_pos() {
                 port_rect.center().distance(pointer_pos) < DISTANCE_TO_CONNECT
             } else {
@@ -799,7 +789,7 @@ where
             );
         }
 
-        // Draw the background shape.
+        // 绘制背景形状
         // 注意：这段代码比实际需要的更复杂，因为egui不支持绘制具有不对称圆角的矩形。
 
         let (shape, outline) = {
@@ -862,9 +852,9 @@ where
         ui.painter().set(background_shape, shape);
         ui.painter().set(outline_shape, outline);
 
-        // --- Interaction ---
+        // --- 交互 ---
 
-        // Titlebar buttons
+        // 标题栏按钮
         let can_delete = self.graph.nodes[self.node_id].user_data.can_delete(
             self.node_id,
             self.graph,
@@ -885,10 +875,10 @@ where
             responses.push(NodeResponse::RaiseNode(self.node_id));
         }
 
-        // Node selection
+        // 节点选择
         //
-        // HACK: Only set the select response when no other response is active.
-        // This prevents some issues.
+        // 技巧：仅当没有其他响应处于活动状态时才设置选择响应
+        // 这可以防止一些问题
         if responses.is_empty() && window_response.clicked_by(PointerButton::Primary) {
             responses.push(NodeResponse::SelectNode(self.node_id));
             responses.push(NodeResponse::RaiseNode(self.node_id));
