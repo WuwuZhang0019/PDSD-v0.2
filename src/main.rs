@@ -1,39 +1,35 @@
 use eframe::egui;
+mod application;
 
-fn main() -> eframe::Result {
-    let native_options = eframe::NativeOptions::default();
+/// 程序入口点
+fn main() -> Result<(), eframe::Error> {
+    // 设置eframe选项
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([1200.0, 800.0])
+            .with_min_inner_size([800.0, 600.0])
+            .with_title("电力配电系统设计软件 (PDSD)"),
+        
+        // 渲染配置
+        renderer: eframe::Renderer::Glow,
+        
+        // 其他配置
+        vsync: true,
+        
+        ..Default::default()
+    };
+    
+    // 启动应用
     eframe::run_native(
-        "Power Distribution System Diagram",
-        native_options,
-        Box::new(|cc| Ok(Box::new(MyApp::new(cc)))),
+        "电力配电系统设计软件 (PDSD)",
+        options,
+        Box::new(|cc| {
+            // 配置字体以支持中文
+            let fonts = egui::FontDefinitions::default();
+            cc.egui_ctx.set_fonts(fonts);
+            
+            // 创建应用实例
+            Box::new(PDSDApp::new())
+        }),
     )
-}
-
-#[derive(Default)]
-struct MyApp {
-    name: String,
-    age: u32,
-}
-
-impl MyApp {
-    fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        Self::default()
-    }
-}
-
-impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Hello World!");
-            ui.horizontal(|ui| {
-                ui.label("Your name: ");
-                ui.text_edit_singleline(&mut self.name);
-            });
-            ui.add(egui::Slider::new(&mut self.age, 0..=120).text("age"));
-            if ui.button("Click me").clicked() {
-                println!("Hello {}, age {}", self.name, self.age);
-            }
-            ui.label(format!("Hello '{}', age {}", self.name, self.age));
-        });
-    }
 }
