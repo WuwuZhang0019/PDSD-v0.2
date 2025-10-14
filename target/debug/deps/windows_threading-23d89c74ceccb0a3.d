@@ -1,8 +1,0 @@
-G:\04 rust\PDSD-v0.2\target\debug\deps\windows_threading-23d89c74ceccb0a3.d: C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\windows-threading-0.1.0\src\lib.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\windows-threading-0.1.0\src\bindings.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\windows-threading-0.1.0\src\pool.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\windows-threading-0.1.0\src\../readme.md
-
-G:\04 rust\PDSD-v0.2\target\debug\deps\libwindows_threading-23d89c74ceccb0a3.rmeta: C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\windows-threading-0.1.0\src\lib.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\windows-threading-0.1.0\src\bindings.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\windows-threading-0.1.0\src\pool.rs C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\windows-threading-0.1.0\src\../readme.md
-
-C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\windows-threading-0.1.0\src\lib.rs:
-C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\windows-threading-0.1.0\src\bindings.rs:
-C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\windows-threading-0.1.0\src\pool.rs:
-C:\Users\Zyf\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\windows-threading-0.1.0\src\../readme.md:
