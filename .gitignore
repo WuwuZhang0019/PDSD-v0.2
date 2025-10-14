@@ -1,0 +1,13 @@
+# 编译输出目录（核心需要忽略的文件夹）
+target/
+
+# Cargo 生成的锁文件（可选，视团队协作需求而定，通常建议提交）
+# Cargo.lock （如果是库项目，可能需要忽略；二进制项目建议提交）
+
+# 临时文件和缓存
+*.swp
+*.swo
+*.rs.bk
+.DS_Store  # macOS 系统文件
+.idea/     # IDEA 系列编辑器配置(如果使用其他编辑器，如 VS Code,可添加 .vscode/)
+.vscode/   # VS Code 配置
