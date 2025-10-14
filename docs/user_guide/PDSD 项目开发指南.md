@@ -133,37 +133,19 @@ use std::io::{Read, Write};
 // 定义电气系统数据类型枚举
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum ElectricDataType {
-    // 电气参数
-    Current,        // 电流(A)
-    Power,          // 功率(kW)
-    Voltage,        // 电压(V)
-    PowerFactor,    // 功率因数
-    Coefficient,    // 需用系数
-    // 配电系统参数
+    // 电气参数    
+    Power,          // 功率(kW) - 对应代码中的pe参数
+    Voltage,        // 电压(V) - 对应代码中的U参数
+    Cos,            // 余弦值 - 对应代码中的cos参数(功率因数)
+    Kx,             // 需要系数 - 对应代码中的kx参数
+    CalculatedCurrent, // 计算电流 - 对应代码中的ijs参数
+    // 节点数据参数
     CircuitData,    // 回路数据
     DistributionBoxData, // 配电箱数据
-    ThreePhaseData, // 三相数据
+
     // 标识数据
     String,         // 字符串标识
     Integer,        // 整数标识
-}
-
-// 实现DataTypeTrait以提供视觉表示
-impl DataTypeTrait for ElectricDataType {
-    fn data_type_color(&self) -> egui::Color32 {
-        // 根据数据类型返回不同的颜色，用于端口显示
-        match self {
-            ElectricDataType::Current => egui::Color32::from_rgb(255, 100, 100),      // 红色 - 电流
-            ElectricDataType::Power => egui::Color32::from_rgb(100, 200, 100),        // 绿色 - 功率
-            ElectricDataType::Voltage => egui::Color32::from_rgb(100, 100, 255),      // 蓝色 - 电压
-            ElectricDataType::PowerFactor => egui::Color32::from_rgb(255, 255, 100),  // 黄色 - 功率因数
-            ElectricDataType::Coefficient => egui::Color32::from_rgb(255, 100, 255),  // 紫色 - 系数
-            ElectricDataType::CircuitData => egui::Color32::from_rgb(200, 150, 100),  // 棕色 - 回路数据
-            ElectricDataType::DistributionBoxData => egui::Color32::from_rgb(100, 200, 200), // 青色 - 配电箱数据
-            ElectricDataType::ThreePhaseData => egui::Color32::from_rgb(200, 100, 200), // 紫红色 - 三相数据
-            ElectricDataType::String => egui::Color32::from_rgb(200, 200, 200),       // 灰色 - 字符串
-            ElectricDataType::Integer => egui::Color32::from_rgb(150, 150, 150),       // 深灰色 - 整数
-        }
 }
 
 // 定义电气系统值类型
