@@ -5,43 +5,48 @@
 ## 1. 准备工作与规划阶段
 
 ### 1.1 明确项目需求
+
 在开始开发之前，首先需要明确以下几点：
+
 - 你的节点图应用将解决什么问题？
-    - 建筑电气设计过程中，配电系统图的设计简化问题。
+  - 建筑电气设计过程中，配电系统图的设计简化问题。
 - 需要支持哪些类型的节点和数据？
-    - 节点类型：
-        - 电源节点
-        - 负载节点
-        - 开关节点
-        - 连接节点
-    - 数据类型：
-        - 电压、电流、功率等电气参数
-        - 节点位置、连接关系等
+  - 节点类型：
+    - 电源节点
+    - 负载节点
+    - 开关节点
+    - 连接节点
+  - 数据类型：
+    - 电压、电流、功率等电气参数
+    - 节点位置、连接关系等
 - 用户交互流程是什么样的？
-    - 用户通过点击节点添加到图中
-    - 用户通过拖动节点连接不同节点
-    - 节点类型：
-        - 电源节点
-        - 负载节点
-        - 开关节点
-        - 连接节点
-    - 数据类型：
-        - 电压、电流、功率等电气参数
-        - 节点位置、连接关系等
+  - 用户通过点击节点添加到图中
+  - 用户通过拖动节点连接不同节点
+  - 节点类型：
+    - 电源节点
+    - 负载节点
+    - 开关节点
+    - 连接节点
+  - 数据类型：
+    - 电压、电流、功率等电气参数
+    - 节点位置、连接关系等
 - 用户交互流程是什么样的？
-    - 用户通过点击节点添加到图中
-    - 用户通过拖动节点连接不同节点
-    - 用户可以编辑节点属性（如电压、电流等）
+  - 用户通过点击节点添加到图中
+  - 用户通过拖动节点连接不同节点
+  - 用户可以编辑节点属性（如电压、电流等）
 - 是否需要状态持久化功能？
-    - 是，需要保存用户创建的节点图和相关参数。
+  - 是，需要保存用户创建的节点图和相关参数。
 
 ### 1.2 环境准备
-1. 确保已安装Rust开发环境（建议使用rustup管理）
-2. 熟悉egui和eframe的基本概念（如果计划创建桌面应用）
-3. 克隆或下载egui_node_graph仓库作为参考
+
+1. 确保已安装 Rust 开发环境（建议使用 rustup 管理）
+2. 熟悉 egui 和 eframe 的基本概念（如果计划创建桌面应用）
+3. 克隆或下载 egui_node_graph 仓库作为参考
 
 ### 1.3 项目结构设计
-创建新的Rust项目并设计基本结构：
+
+创建新的 Rust 项目并设计基本结构：
+
 ```bash
 cargo new PDSD
 cd PDSD
@@ -106,7 +111,7 @@ PDSD/
     └── user_guide/            # 用户指南
 ```
 
-这种结构设计遵循了关注点分离原则，将核心数据类型、业务逻辑、UI表现和外部接口清晰分开，便于团队协作和代码维护。
+这种结构设计遵循了关注点分离原则，将核心数据类型、业务逻辑、UI 表现和外部接口清晰分开，便于团队协作和代码维护。
 
 ## 2. 核心数据类型定义
 
@@ -168,7 +173,7 @@ enum ElectricValueType {
     Float(f64),
     Integer(i64),
     String(String),
-    
+
     // 电气系统特定类型
     CircuitData(HashMap<String, f64>),    // 回路参数集合
     DistributionBoxData(HashMap<String, f64>), // 配电箱参数集合
@@ -184,7 +189,7 @@ impl ElectricValueType {
             _ => None,
         }
     }
-    
+
     // 获取整数值
     fn as_integer(&self) -> Option<i64> {
         match self {
@@ -192,7 +197,7 @@ impl ElectricValueType {
             _ => None,
         }
     }
-    
+
     // 获取字符串值
     fn as_string(&self) -> Option<&str> {
         match self {
@@ -200,7 +205,7 @@ impl ElectricValueType {
             _ => None,
         }
     }
-    
+
     // 获取回路数据
     fn as_circuit_data(&self) -> Option<&HashMap<String, f64>> {
         match self {
@@ -224,8 +229,7 @@ enum ElectricNodeData {
     // 计算节点
     CalculationNode(CalculationNodeData),
 }
-    }
-    
+
     fn data_type_name(&self) -> &str {
         // 提供数据类型的显示名称
         match self {
@@ -241,7 +245,7 @@ enum ElectricNodeData {
             ElectricDataType::Integer => "整数",
         }
     }
-}
+
 
 // 定义各个节点的数据结构
 #[derive(Debug, Clone)]
@@ -249,17 +253,17 @@ struct CircuitNodeData {
     // 回路基本信息
     name: String,
     description: String,
-    
+
     // 电气参数
     rated_power: f64,         // 额定功率(kW)
     power_factor: f64,        // 功率因数
     demand_coefficient: f64,  // 需用系数
     current: f64,             // 计算电流(A)
-    
+
     // 回路类型和相数
     circuit_type: String,     // 照明/动力/混合
     phase_type: String,       // 单相/三相
-    
+
     // 保护参数
     protection_current: f64,  // 保护电流(A)
     wire_size: String,        // 导线规格
@@ -271,17 +275,17 @@ struct DistributionBoxNodeData {
     name: String,
     description: String,
     box_type: String,         // 配电箱类型
-    
+
     // 电气参数
     rated_voltage: f64,       // 额定电压(V)
     rated_current: f64,       // 额定电流(A)
     total_power: f64,         // 总功率(kW)
-    
+
     // 三相负载分布
     phase_a_load: f64,        // A相负载(kW)
     phase_b_load: f64,        // B相负载(kW)
     phase_c_load: f64,        // C相负载(kW)
-    
+
     // 进线参数
     incoming_current: f64,    // 进线电流(A)
     incoming_wire_size: String, // 进线规格
@@ -294,17 +298,17 @@ struct TrunkLineNodeData {
     name: String,
     description: String,
     line_type: String,        // 干线类型
-    
+
     // 电气参数
     length: f64,              // 长度(m)
     resistance: f64,          // 电阻(Ω)
     reactance: f64,           // 电抗(Ω)
     voltage_drop: f64,        // 电压降(V)
-    
+
     // 负荷参数
     total_current: f64,       // 总电流(A)
     wire_size: String,        // 导线规格
-    
+
     // 三相参数
     phase_a_current: f64,     // A相电流(A)
     phase_b_current: f64,     // B相电流(A)
@@ -318,15 +322,15 @@ struct PowerSourceNodeData {
     name: String,
     description: String,
     source_type: String,      // 电源类型
-    
+
     // 电气参数
     voltage: f64,             // 电压(V)
     frequency: f64,           // 频率(Hz)
     capacity: f64,            // 容量(kVA)
-    
+
     // 相数信息
     phase_count: u32,         // 相数(1/3)
-    
+
     // 效率参数
     efficiency: f64,          // 效率
 }
@@ -337,16 +341,16 @@ struct CalculationNodeData {
     // 计算节点基本信息
     name: String,
     calculation_type: String, // 计算类型
-    
+
     // 计算参数
     result: f64,              // 计算结果
     precision: u32,           // 计算精度
-    
+
     // 特定计算类型参数
     phase_balance_degree: f64, // 三相平衡度(%)
     voltage_loss_percent: f64, // 电压损失率(%)
 }
-    
+
     ((max_phase - min_phase) / max_phase) * 100.0
 }
 
@@ -375,28 +379,28 @@ impl ElectricSystemReport {
             project_id,
         }
     }
-    
+
     fn add_system_overview(&mut self, graph: &egui_node_graph::Graph<ElectricNodeData, ElectricDataType, ElectricValueType>) {
         // 添加系统概览部分到报告
     }
-    
+
     fn add_nodes_details(&mut self, graph: &egui_node_graph::Graph<ElectricNodeData, ElectricDataType, ElectricValueType>) {
         // 添加节点详细信息到报告
     }
-    
+
     fn add_calculation_results(&mut self, cache: &std::collections::HashMap<String, f64>) {
         // 添加计算结果到报告
     }
-    
+
     fn add_phase_balance_analysis(&mut self, graph: &egui_node_graph::Graph<ElectricNodeData, ElectricDataType, ElectricValueType>) {
         // 添加三相平衡分析到报告
     }
-    
-    fn add_recommendations(&mut self, graph: &egui_node_graph::Graph<ElectricNodeData, ElectricDataType, ElectricValueType>, 
+
+    fn add_recommendations(&mut self, graph: &egui_node_graph::Graph<ElectricNodeData, ElectricDataType, ElectricValueType>,
                           cache: &std::collections::HashMap<String, f64>) {
         // 添加优化建议到报告
     }
-    
+
     fn generate_pdf(&self, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
         // 生成PDF报告
         // 这里需要使用PDF生成库如printpdf或rust-pdf
@@ -471,10 +475,10 @@ impl Serialize for MyAppValueType {
         S: Serializer,
     {
         use serde::ser::SerializeMap;
-        
+
         // 创建一个包含类型和值的映射
         let mut map = serializer.serialize_map(Some(2))?;
-        
+
         match self {
             MyAppValueType::Float(val) => {
                 map.serialize_entry("type", "float")?;
@@ -505,7 +509,7 @@ impl Serialize for MyAppValueType {
                 map.serialize_entry("value", val)?;
             }
         }
-        
+
         map.end()
     }
 }
@@ -517,30 +521,30 @@ impl<'de> Deserialize<'de> for MyAppValueType {
     {
         use serde::de::{self, MapAccess, Visitor};
         use std::fmt;
-        
+
         #[derive(Deserialize)]
         #[serde(field_identifier, rename_all = "lowercase")]
         enum Field {
             Type,
             Value,
         }
-        
+
         struct MyAppValueTypeVisitor;
-        
+
         impl<'de> Visitor<'de> for MyAppValueTypeVisitor {
             type Value = MyAppValueType;
-            
+
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("struct MyAppValueType")
             }
-            
+
             fn visit_map<V>(self, mut map: V) -> Result<MyAppValueType, V::Error>
             where
                 V: MapAccess<'de>,
             {
                 let mut value_type = None;
                 let mut value = None;
-                
+
                 while let Some(key) = map.next_key()? {
                     match key {
                         Field::Type => {
@@ -557,10 +561,10 @@ impl<'de> Deserialize<'de> for MyAppValueType {
                         }
                     }
                 }
-                
+
                 let value_type = value_type.ok_or_else(|| de::Error::missing_field("type"))?;
                 let value = value.ok_or_else(|| de::Error::missing_field("value"))?;
-                
+
                 match value_type.as_str() {
                     "float" => {
                         let val = value.as_f64()
@@ -619,7 +623,7 @@ impl<'de> Deserialize<'de> for MyAppValueType {
                 }
             }
         }
-        
+
         const FIELDS: &[&str] = &["type", "value"];
         deserializer.deserialize_struct("MyAppValueType", FIELDS, MyAppValueTypeVisitor)
     }
@@ -628,7 +632,7 @@ impl<'de> Deserialize<'de> for MyAppValueType {
 
 ### 2.3 实现参数控件（WidgetValueTrait）
 
-定义如何在UI中编辑电气参数值，包括简单的数值参数和复杂的配电回路、配电箱数据：
+定义如何在 UI 中编辑电气参数值，包括简单的数值参数和复杂的配电回路、配电箱数据：
 
 ```rust
 use egui_node_graph::WidgetValueTrait;
@@ -638,13 +642,13 @@ impl WidgetValueTrait<ElectricDataType> for ElectricValueType {
         // 根据数据类型显示不同的编辑控件
         match (self, data_type) {
             // 处理基本电气参数
-            (ElectricValueType::Float(val), 
-             ElectricDataType::Current | 
-             ElectricDataType::Power | 
-             ElectricDataType::Voltage | 
-             ElectricDataType::PowerFactor | 
+            (ElectricValueType::Float(val),
+             ElectricDataType::Current |
+             ElectricDataType::Power |
+             ElectricDataType::Voltage |
+             ElectricDataType::PowerFactor |
              ElectricDataType::Coefficient) => {
-                
+
                 let label = match data_type {
                     ElectricDataType::Current => "电流(A): ",
                     ElectricDataType::Power => "功率(kW): ",
@@ -653,10 +657,10 @@ impl WidgetValueTrait<ElectricDataType> for ElectricValueType {
                     ElectricDataType::Coefficient => "需用系数: ",
                     _ => "值: "
                 };
-                
+
                 ui.horizontal(|ui| {
                     ui.label(label);
-                    
+
                     if *data_type == ElectricDataType::PowerFactor || *data_type == ElectricDataType::Coefficient {
                         // 功率因数和需用系数限制在0-1之间
                         ui.add(egui::Slider::new(val, 0.0..=1.0).text(format!("{:.2}", val)))
@@ -666,17 +670,17 @@ impl WidgetValueTrait<ElectricDataType> for ElectricValueType {
                     }
                 }).response
             }
-            
+
             // 处理整数参数
             (ElectricValueType::Integer(val), ElectricDataType::Integer) => {
                 ui.add(egui::DragValue::new(val).clamp_range(0..=i64::MAX))
             }
-            
+
             // 处理字符串参数
             (ElectricValueType::String(val), ElectricDataType::String) => {
                 ui.text_edit_singleline(val)
             }
-            
+
             // 处理配电回路数据（简化视图）
             (ElectricValueType::CircuitData(circuit), ElectricDataType::CircuitData) => {
                 ui.collapsing(format!("回路: {}", circuit.name), |ui| {
@@ -712,7 +716,7 @@ impl WidgetValueTrait<ElectricDataType> for ElectricValueType {
                     });
                 }).response
             }
-            
+
             // 处理配电箱数据（简化视图）
             (ElectricValueType::DistributionBoxData(box_data), ElectricDataType::DistributionBoxData) => {
                 ui.collapsing(format!("配电箱: {}", box_data.name), |ui| {
@@ -732,7 +736,7 @@ impl WidgetValueTrait<ElectricDataType> for ElectricValueType {
                         ui.label("进线电流(A): ");
                         ui.add(egui::DragValue::new(&mut box_data.incoming_current).clamp_range(0.0..=f64::MAX));
                     });
-                    
+
                     // 显示三相平衡信息
                     ui.collapsing("三相平衡信息", |ui| {
                         ui.horizontal(|ui| {
@@ -754,7 +758,7 @@ impl WidgetValueTrait<ElectricDataType> for ElectricValueType {
                     });
                 }).response
             }
-            
+
             // 类型不匹配的情况
             _ => {
                 ui.label("无效的值类型")
@@ -867,7 +871,7 @@ impl NodeDataTrait<ElectricDataType, ElectricValueType> for ElectricNodeData {
             size: egui::Vec2::new(200.0, 150.0),
         }
     }
-    
+
     // 获取节点ID
     fn id(&self) -> &Uuid {
         // 根据节点类型获取对应ID
@@ -887,7 +891,7 @@ impl NodeDataTrait<ElectricDataType, ElectricValueType> for ElectricNodeData {
             },
         }
     }
-    
+
     // 克隆节点
     fn clone_node(&self) -> Box<dyn NodeDataTrait<ElectricDataType, ElectricValueType>> {
         let new_id = Uuid::new_v4();
@@ -928,7 +932,7 @@ impl NodeDataTrait<ElectricDataType, ElectricValueType> for ElectricNodeData {
                 reactance: main_line.reactance,
             }),
         };
-        
+
         Box::new(Self {
             node_type: self.node_type.clone(),
             specific_data: cloned_specific_data,
@@ -936,7 +940,7 @@ impl NodeDataTrait<ElectricDataType, ElectricValueType> for ElectricNodeData {
             size: self.size,
         })
     }
-    
+
     // 自定义节点底部UI
     fn bottom_ui(&mut self, ui: &mut egui::Ui, node_id: egui_node_graph::NodeId) {
         match (&mut self.specific_data, &self.node_type) {
@@ -972,23 +976,23 @@ impl NodeDataTrait<ElectricDataType, ElectricValueType> for ElectricNodeData {
                                 ui.selectable_value(&mut circuit.phase, "C".to_string(), "C相");
                             });
                     });
-                    
+
                     // 计算并显示电流
                     if ui.button("计算电流").clicked() {
                         // 单相计算：I = P * Kx / (U * cosφ)
                         // 假设电压为220V
                         const VOLTAGE: f64 = 220.0;
-                        circuit.calculated_current = (circuit.power * 1000.0 * circuit.coefficient) / 
+                        circuit.calculated_current = (circuit.power * 1000.0 * circuit.coefficient) /
                                                    (VOLTAGE * circuit.power_factor);
                     }
-                    
+
                     ui.horizontal(|ui| {
                         ui.label("计算电流(A): ");
                         ui.label(format!("{:.2}", circuit.calculated_current));
                     });
                 });
             },
-            
+
             (ElectricNodeSpecificData::DistributionBox(box_data), ElectricNodeType::DistributionBoxNode) => {
                 ui.collapsing("配电箱参数", |ui| {
                     ui.horizontal(|ui| {
@@ -1011,7 +1015,7 @@ impl NodeDataTrait<ElectricDataType, ElectricValueType> for ElectricNodeData {
                         ui.label("出线回路数: ");
                         ui.add(egui::DragValue::new(&mut box_data.outgoing_circuits_count).clamp_range(0..=100));
                     });
-                    
+
                     // 三相平衡信息
                     ui.collapsing("三相平衡信息", |ui| {
                         ui.horizontal(|ui| {
@@ -1026,7 +1030,7 @@ impl NodeDataTrait<ElectricDataType, ElectricValueType> for ElectricNodeData {
                             ui.label("C相功率(kW): ");
                             ui.add(egui::DragValue::new(&mut box_data.phase_balance.phase_c_power).clamp_range(0.0..=f64::MAX));
                         });
-                        
+
                         // 计算不平衡度
                         if ui.button("计算不平衡度").clicked() {
                             let max_phase = box_data.phase_balance.phase_a_power
@@ -1035,12 +1039,12 @@ impl NodeDataTrait<ElectricDataType, ElectricValueType> for ElectricNodeData {
                             let min_phase = box_data.phase_balance.phase_a_power
                                 .min(box_data.phase_balance.phase_b_power)
                                 .min(box_data.phase_balance.phase_c_power);
-                            
+
                             if max_phase > 0.0 {
                                 box_data.phase_balance.balance_degree = ((max_phase - min_phase) / max_phase) * 100.0;
                             }
                         }
-                        
+
                         ui.horizontal(|ui| {
                             ui.label("不平衡度(%): ");
                             ui.label(format!("{:.2}", box_data.phase_balance.balance_degree));
@@ -1048,7 +1052,7 @@ impl NodeDataTrait<ElectricDataType, ElectricValueType> for ElectricNodeData {
                     });
                 });
             },
-            
+
             (ElectricNodeSpecificData::MainLine(main_line), ElectricNodeType::MainLineNode) => {
                 ui.collapsing("干线参数", |ui| {
                     ui.horizontal(|ui| {
@@ -1075,21 +1079,21 @@ impl NodeDataTrait<ElectricDataType, ElectricValueType> for ElectricNodeData {
                         ui.label("电缆长度(m): ");
                         ui.add(egui::DragValue::new(&mut main_line.cable_length).clamp_range(0.0..=f64::MAX));
                     });
-                    
+
                     // 计算干线参数
                     if ui.button("计算干线参数").clicked() {
                         // 三相计算：I = P * 1000 / (√3 * U * cosφ)
                         // 假设功率因数为0.8
                         const POWER_FACTOR: f64 = 0.8;
                         let voltage = main_line.voltage_level * 1000.0; // 转换为V
-                        main_line.current_calculated = (main_line.total_power * 1000.0) / 
+                        main_line.current_calculated = (main_line.total_power * 1000.0) /
                                                       (3.0_f64.sqrt() * voltage * POWER_FACTOR);
-                        
+
                         // 简化的电阻电抗计算
                         main_line.resistance = 0.1 * main_line.cable_length / 1000.0;
                         main_line.reactance = 0.08 * main_line.cable_length / 1000.0;
                     }
-                    
+
                     ui.horizontal(|ui| {
                         ui.label("计算电流(A): ");
                         ui.label(format!("{:.2}", main_line.current_calculated));
@@ -1104,11 +1108,11 @@ impl NodeDataTrait<ElectricDataType, ElectricValueType> for ElectricNodeData {
                     });
                 });
             },
-            
+
             _ => {}
         }
     }
-    
+
     // 自定义顶部栏UI
     fn top_bar_ui(&mut self, ui: &mut egui::Ui, node_id: egui_node_graph::NodeId) -> Option<egui::Response> {
         // 添加节点类型标签
@@ -1117,10 +1121,10 @@ impl NodeDataTrait<ElectricDataType, ElectricValueType> for ElectricNodeData {
             ElectricNodeType::DistributionBoxNode => "配电箱",
             ElectricNodeType::MainLineNode => "干线系统",
         };
-        
+
         ui.label(node_type_label).response
     }
-    
+
     // 自定义标题栏颜色
     fn title_bar_color(&self) -> Option<egui::Color32> {
         match self.node_type {
@@ -1144,19 +1148,19 @@ enum ElectricNodeTemplate {
     // 配电回路相关节点
     CircuitNode,
     CircuitGroupNode,
-    
+
     // 配电箱相关节点
     DistributionBoxNode,
     MainDistributionBoxNode,
     SubDistributionBoxNode,
-    
+
     // 干线系统图相关节点
     MainLineNode,
     FeederLineNode,
-    
+
     // 电源节点
     PowerSourceNode,
-    
+
     // 计算节点
     CurrentCalculationNode,
     PhaseBalanceNode,
@@ -1166,19 +1170,19 @@ enum ElectricNodeTemplate {
 impl egui_node_graph::CategoryTrait for ElectricNodeTemplate {
     fn category(&self) -> &str {
         match self {
-            ElectricNodeTemplate::CircuitNode | 
+            ElectricNodeTemplate::CircuitNode |
             ElectricNodeTemplate::CircuitGroupNode => "配电回路",
-            
-            ElectricNodeTemplate::DistributionBoxNode | 
-            ElectricNodeTemplate::MainDistributionBoxNode | 
+
+            ElectricNodeTemplate::DistributionBoxNode |
+            ElectricNodeTemplate::MainDistributionBoxNode |
             ElectricNodeTemplate::SubDistributionBoxNode => "配电箱",
-            
-            ElectricNodeTemplate::MainLineNode | 
+
+            ElectricNodeTemplate::MainLineNode |
             ElectricNodeTemplate::FeederLineNode => "干线系统",
-            
+
             ElectricNodeTemplate::PowerSourceNode => "电源",
-            
-            ElectricNodeTemplate::CurrentCalculationNode | 
+
+            ElectricNodeTemplate::CurrentCalculationNode |
             ElectricNodeTemplate::PhaseBalanceNode => "计算工具",
         }
     }
@@ -1191,7 +1195,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
     type ValueType = ElectricValueType;
     type Category = Self;
     type UserState = (); // 可以使用自定义类型存储用户状态
-    
+
     fn node_label(&self) -> String {
         match self {
             ElectricNodeTemplate::CircuitNode => "配电回路",
@@ -1206,20 +1210,20 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
             ElectricNodeTemplate::PhaseBalanceNode => "三相平衡",
         }
     }
-    
+
     fn node_category(&self) -> Self::Category {
         *self
     }
-    
+
     fn user_data(&self) -> Self::NodeData {
         // 使用UUID::new_v4()生成临时ID
         let temp_id = uuid::Uuid::new_v4();
         self.node_data(temp_id)
     }
-    
+
     fn node_data(&self, id: uuid::Uuid) -> Self::NodeData {
         let mut node_data = ElectricNodeData::new_with_id(id);
-        
+
         // 根据模板类型设置节点数据
         match self {
             ElectricNodeTemplate::CircuitNode => {
@@ -1235,7 +1239,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
                 });
                 node_data.size = egui::Vec2::new(200.0, 150.0);
             },
-            
+
             ElectricNodeTemplate::DistributionBoxNode |
             ElectricNodeTemplate::MainDistributionBoxNode |
             ElectricNodeTemplate::SubDistributionBoxNode => {
@@ -1260,7 +1264,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
                 });
                 node_data.size = egui::Vec2::new(220.0, 200.0);
             },
-            
+
             ElectricNodeTemplate::MainLineNode |
             ElectricNodeTemplate::FeederLineNode => {
                 node_data.node_type = ElectricNodeType::MainLineNode;
@@ -1281,15 +1285,15 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
                 });
                 node_data.size = egui::Vec2::new(240.0, 220.0);
             },
-            
+
             _ => {
                 // 默认配置
             }
         }
-        
+
         node_data
     }
-    
+
     fn build_node(
         &self,
         graph: &mut egui_node_graph::Graph<Self::NodeData, Self::DataType, Self::ValueType>,
@@ -1305,7 +1309,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
                 graph.add_output_param(node_id, "电流", ElectricDataType::Current);
                 graph.add_output_param(node_id, "回路数据", ElectricDataType::CircuitData);
             },
-            
+
             ElectricNodeTemplate::DistributionBoxNode |
             ElectricNodeTemplate::MainDistributionBoxNode |
             ElectricNodeTemplate::SubDistributionBoxNode => {
@@ -1315,7 +1319,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
                 graph.add_output_param(node_id, "三相平衡", ElectricDataType::PhaseBalance);
                 graph.add_output_param(node_id, "配电箱数据", ElectricDataType::DistributionBoxData);
             },
-            
+
             ElectricNodeTemplate::MainLineNode |
             ElectricNodeTemplate::FeederLineNode => {
                 // 干线节点：一个输入（电源输入），多个输出（线路电流、电压降、干线数据）
@@ -1324,13 +1328,13 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
                 graph.add_output_param(node_id, "电压降", ElectricDataType::Voltage);
                 graph.add_output_param(node_id, "干线数据", ElectricDataType::MainLineData);
             },
-            
+
             ElectricNodeTemplate::PowerSourceNode => {
                 // 电源节点：无输入，输出电压和电源信息
                 graph.add_output_param(node_id, "电压", ElectricDataType::Voltage);
                 graph.add_output_param(node_id, "电源容量", ElectricDataType::Power);
             },
-            
+
             ElectricNodeTemplate::CurrentCalculationNode => {
                 // 电流计算节点：输入功率、电压、功率因数，输出计算电流
                 graph.add_input_param(node_id, "功率", InputParamKind::ConnectionOrConstant, ElectricDataType::Power, Some(ElectricValueType::Float(0.0)));
@@ -1339,7 +1343,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
                 graph.add_input_param(node_id, "需用系数", InputParamKind::ConnectionOrConstant, ElectricDataType::Coefficient, Some(ElectricValueType::Float(0.8)));
                 graph.add_output_param(node_id, "计算电流", ElectricDataType::Current);
             },
-            
+
             ElectricNodeTemplate::PhaseBalanceNode => {
                 // 三相平衡节点：输入A/B/C相功率，输出不平衡度和优化建议
                 graph.add_input_param(node_id, "A相功率", InputParamKind::ConnectionOrConstant, ElectricDataType::Power, Some(ElectricValueType::Float(0.0)));
@@ -1348,7 +1352,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
                 graph.add_output_param(node_id, "不平衡度", ElectricDataType::Coefficient);
                 graph.add_output_param(node_id, "平衡建议", ElectricDataType::String);
             },
-            
+
             _ => {
                 // 默认情况：不添加参数
             }
@@ -1362,19 +1366,19 @@ fn all_electric_templates() -> Vec<ElectricNodeTemplate> {
         // 配电回路相关节点
         ElectricNodeTemplate::CircuitNode,
         ElectricNodeTemplate::CircuitGroupNode,
-        
+
         // 配电箱相关节点
         ElectricNodeTemplate::DistributionBoxNode,
         ElectricNodeTemplate::MainDistributionBoxNode,
         ElectricNodeTemplate::SubDistributionBoxNode,
-        
+
         // 干线系统图相关节点
         ElectricNodeTemplate::MainLineNode,
         ElectricNodeTemplate::FeederLineNode,
-        
+
         // 电源节点
         ElectricNodeTemplate::PowerSourceNode,
-        
+
         // 计算节点
         ElectricNodeTemplate::CurrentCalculationNode,
         ElectricNodeTemplate::PhaseBalanceNode,
@@ -1419,7 +1423,7 @@ impl Default for ElectricNodeGraphApp {
 }
 ```
 
-### 4.2 实现电气系统应用的UI和逻辑
+### 4.2 实现电气系统应用的 UI 和逻辑
 
 ```rust
 use eframe::egui;
@@ -1437,7 +1441,7 @@ impl eframe::App for ElectricNodeGraphApp {
                 }
             });
             ui.separator();
-            
+
             // 创建工具栏
             ui.horizontal(|ui| {
                 // 添加节点按钮
@@ -1446,13 +1450,13 @@ impl eframe::App for ElectricNodeGraphApp {
                     ui.menu_button("选择节点类型", |ui| {
                         // 按类别组织节点模板
                         let templates = all_electric_templates();
-                        
+
                         // 收集所有唯一类别
                         let mut categories = std::collections::HashSet::new();
                         for template in &templates {
                             categories.insert(template.category().to_string());
                         }
-                        
+
                         // 按类别显示节点
                         for category in categories.into_iter() {
                             ui.menu_button(category, |ui| {
@@ -1473,7 +1477,7 @@ impl eframe::App for ElectricNodeGraphApp {
                         }
                     });
                 }
-                
+
                 // 保存和加载按钮
                 if ui.button("保存项目").clicked() {
                     // 实现项目保存功能
@@ -1483,7 +1487,7 @@ impl eframe::App for ElectricNodeGraphApp {
                         self.error_message = Some("项目保存成功".to_string());
                     }
                 }
-                
+
                 if ui.button("加载项目").clicked() {
                     // 实现项目加载功能
                     if let Err(e) = self.load_project() {
@@ -1492,13 +1496,13 @@ impl eframe::App for ElectricNodeGraphApp {
                         self.error_message = Some("项目加载成功".to_string());
                     }
                 }
-                
+
                 // 运行计算按钮
                 if ui.button("运行计算").clicked() {
                     self.run_calculations();
                     self.error_message = Some("计算完成".to_string());
                 }
-                
+
                 // 生成报告按钮
                 if ui.button("生成报告").clicked() {
                     if let Err(e) = self.generate_report() {
@@ -1508,7 +1512,7 @@ impl eframe::App for ElectricNodeGraphApp {
                     }
                 }
             });
-            
+
             // 显示错误信息
             if let Some(error_msg) = &self.error_message {
                 ui.label(egui::RichText::new(error_msg).color(egui::Color32::RED));
@@ -1518,7 +1522,7 @@ impl eframe::App for ElectricNodeGraphApp {
                     self.error_message = None;
                 }
             }
-            
+
             // 创建一个可滚动区域
             egui::ScrollArea::both().show(ui, |ui| {
                 // 调整容器大小
@@ -1526,7 +1530,7 @@ impl eframe::App for ElectricNodeGraphApp {
                     ui.available_width(),
                     ui.available_height() - 50.0, // 留出状态栏空间
                 ));
-                
+
                 // 绘制节点图编辑器
                 let node_responses = egui_node_graph::draw_graph_editor(
                     ui,
@@ -1536,11 +1540,11 @@ impl eframe::App for ElectricNodeGraphApp {
                     &all_electric_templates(),
                     &mut (), // 用户状态
                 );
-                
+
                 // 处理节点响应事件
                 self.handle_node_responses(node_responses);
             });
-            
+
             // 状态栏显示
             ui.separator();
             ui.horizontal(|ui| {
@@ -1564,119 +1568,119 @@ impl ElectricNodeGraphApp {
             version: env!("CARGO_PKG_VERSION").to_string(),
             save_date: chrono::Utc::now(),
         };
-        
+
         // 序列化并保存到文件
         let json_data = serde_json::to_string_pretty(&project_data)?;
-        let file_path = format!("{}_{}.json", 
-            self.project_name.replace(' ', '_'), 
+        let file_path = format!("{}_{}.json",
+            self.project_name.replace(' ', '_'),
             chrono::Utc::now().format("%Y%m%d_%H%M%S"));
         std::fs::write(file_path, json_data)?;
-        
+
         Ok(())
     }
-    
+
     // 加载项目
     fn load_project(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         // 这里应该使用文件选择对话框，但为简化示例，直接读取
         // 在实际应用中，应使用文件对话框库如rfd或native-dialog
         let file_path = "电气配电系统项目.json";
-        
+
         let json_data = std::fs::read_to_string(file_path)?;
         let project_data: ElectricProjectData = serde_json::from_str(&json_data)?;
-        
+
         // 恢复项目数据
         self.project_name = project_data.project_name;
         self.project_id = project_data.project_id;
         self.graph = project_data.graph;
         self.calculation_cache = project_data.calculation_cache;
-        
+
         Ok(())
     }
-    
+
     // 运行电气系统计算
     fn run_calculations(&mut self) {
         // 1. 构建依赖图并确定计算顺序（拓扑排序）
         let execution_order = self.determine_calculation_order();
-        
+
         // 2. 清除计算缓存
         self.calculation_cache.clear();
-        
+
         // 3. 按照计算顺序执行每个节点
         for node_id in execution_order {
             self.calculate_node(node_id);
         }
-        
+
         // 4. 计算三相平衡
         self.calculate_phase_balance();
-        
+
         // 5. 更新所有节点的显示数据
         self.update_node_display_data();
     }
-    
+
     // 生成报告
     fn generate_report(&self) -> Result<(), Box<dyn std::error::Error>> {
         // 创建报告生成器
         let mut report = ElectricSystemReport::new(&self.project_name, self.project_id);
-        
+
         // 添加系统概览
         report.add_system_overview(&self.graph);
-        
+
         // 添加节点详情
         report.add_nodes_details(&self.graph);
-        
+
         // 添加计算结果
         report.add_calculation_results(&self.calculation_cache);
-        
+
         // 添加三相平衡分析
         report.add_phase_balance_analysis(&self.graph);
-        
+
         // 添加推荐建议
         report.add_recommendations(&self.graph, &self.calculation_cache);
-        
+
         // 生成PDF报告
-        let file_path = format!("报告_{}_{}.pdf", 
-            self.project_name.replace(' ', '_'), 
+        let file_path = format!("报告_{}_{}.pdf",
+            self.project_name.replace(' ', '_'),
             chrono::Utc::now().format("%Y%m%d_%H%M%S"));
         report.generate_pdf(&file_path)?;
-        
+
         Ok(())
     }
-    
+
     // 打开项目设置对话框
     fn open_project_settings(&mut self, ui: &mut egui::Ui) {
         // 这里可以实现项目设置对话框
         // 例如修改项目名称、项目参数等
     }
-    
+
     // 确定计算顺序（拓扑排序）
     fn determine_calculation_order(&self) -> Vec<egui_node_graph::NodeId> {
         // 实现拓扑排序算法确定节点计算顺序
         // 从电源节点开始，依次计算下游节点
         let mut order = Vec::new();
         let mut visited = std::collections::HashSet::new();
-        
+
         // 实现简化版拓扑排序
         for node_id in self.graph.nodes.keys() {
             self.traverse_node(node_id, &mut visited, &mut order);
         }
-        
+
         order
     }
-    
+
     // 遍历节点进行拓扑排序
     fn traverse_node(&self, node_id: egui_node_graph::NodeId, visited: &mut std::collections::HashSet<egui_node_graph::NodeId>, order: &mut Vec<egui_node_graph::NodeId>) {
         if visited.contains(&node_id) {
             return;
         }
-        
+
         // 先访问所有依赖的上游节点
         // 这里需要实现依赖关系分析
-        
+
         // 然后将当前节点加入顺序
         visited.insert(node_id);
         order.push(node_id);
     }
-    
+
     // 计算单个节点
     fn calculate_node(&mut self, node_id: egui_node_graph::NodeId) {
         // 根据节点类型执行特定计算
@@ -1690,7 +1694,7 @@ impl ElectricNodeGraphApp {
             }
         }
     }
-    
+
     // 计算配电回路节点
     fn calculate_circuit_node(&mut self, node_id: egui_node_graph::NodeId, node: &egui_node_graph::Node<ElectricNodeData, ElectricDataType, ElectricValueType>) {
         if let ElectricNodeSpecificData::Circuit(circuit_info) = &node.user_data.specific_data {
@@ -1698,23 +1702,23 @@ impl ElectricNodeGraphApp {
             // 这里使用实际的电流计算公式
             let voltage = self.get_input_voltage(node_id).unwrap_or(220.0); // 默认220V
             let current = calculate_current(circuit_info.power, voltage, circuit_info.power_factor, circuit_info.coefficient);
-            
+
             // 更新计算结果
             let cache_key = format!("circuit_current_{}", node_id.0);
             self.calculation_cache.insert(cache_key, current);
-            
+
             // 更新节点数据
             // 注意：在实际应用中，需要通过可变引用更新节点数据
         }
     }
-    
+
     // 获取输入电压
     fn get_input_voltage(&self, node_id: egui_node_graph::NodeId) -> Option<f64> {
         // 从输入参数或上游连接获取电压值
         // 这里需要实现实际的电压获取逻辑
         None
     }
-    
+
     // 计算三相平衡
     fn calculate_phase_balance(&mut self) {
         // 遍历所有配电箱节点，计算三相平衡
@@ -1723,10 +1727,10 @@ impl ElectricNodeGraphApp {
                 if let ElectricNodeType::DistributionBoxNode = node.user_data.node_type {
                     // 收集A/B/C相功率数据
                     let (phase_a, phase_b, phase_c) = self.collect_phase_powers(node_id);
-                    
+
                     // 计算不平衡度
                     let balance_degree = calculate_phase_balance_degree(phase_a, phase_b, phase_c);
-                    
+
                     // 存储结果
                     let cache_key = format!("balance_degree_{}", node_id.0);
                     self.calculation_cache.insert(cache_key, balance_degree);
@@ -1734,18 +1738,18 @@ impl ElectricNodeGraphApp {
             }
         }
     }
-    
+
     // 收集相功率
     fn collect_phase_powers(&self, distribution_box_id: egui_node_graph::NodeId) -> (f64, f64, f64) {
         // 实现收集配电箱连接的各相功率数据
         (0.0, 0.0, 0.0) // 默认值，需要实际实现
     }
-    
+
     // 更新节点显示数据
     fn update_node_display_data(&mut self) {
         // 更新所有节点的显示数据，如计算结果、状态等
     }
-    
+
     // 处理节点响应事件
     fn handle_node_responses(&mut self, responses: Vec<egui_node_graph::NodeResponse<ElectricNodeTemplate>>) {
         for response in responses {
@@ -1771,7 +1775,7 @@ impl ElectricNodeGraphApp {
                                     if !self.is_connection_valid(&output_node.user_data, &input_node.user_data, output.data_type, input.data_type) {
                                         // 不兼容的连接，移除连接并显示错误
                                         self.graph.remove_connection(output_id, input_id);
-                                        self.error_message = Some(format!("连接规则不允许: {} -> {}", 
+                                        self.error_message = Some(format!("连接规则不允许: {} -> {}",
                                             output_node.label, input_node.label));
                                     } else if output.data_type != input.data_type {
                                         // 数据类型不匹配
@@ -1817,26 +1821,26 @@ impl ElectricNodeGraphApp {
             }
         }
     }
-    
+
     // 检查连接是否有效（电气系统规则）
-    fn is_connection_valid(&self, output_node_data: &ElectricNodeData, input_node_data: &ElectricNodeData, 
+    fn is_connection_valid(&self, output_node_data: &ElectricNodeData, input_node_data: &ElectricNodeData,
                           output_type: ElectricDataType, input_type: ElectricDataType) -> bool {
         // 定义电气系统的连接规则
         match (output_node_data.node_type, input_node_data.node_type) {
             // 电源节点只能连接到干线或配电箱
             (ElectricNodeType::PowerSourceNode, ElectricNodeType::MainLineNode) => true,
             (ElectricNodeType::PowerSourceNode, ElectricNodeType::DistributionBoxNode) => true,
-            
+
             // 干线可以连接到配电箱
             (ElectricNodeType::MainLineNode, ElectricNodeType::DistributionBoxNode) => true,
-            
+
             // 配电箱可以连接到配电回路
             (ElectricNodeType::DistributionBoxNode, ElectricNodeType::CircuitNode) => true,
-            
+
             // 计算节点的连接规则
             (_, ElectricNodeType::CalculationNode) => true, // 任何节点都可以连接到计算节点
             (ElectricNodeType::CalculationNode, _) => true, // 计算节点可以连接到任何节点
-            
+
             // 其他连接类型需要根据具体的数据类型判断
             _ => {
                 // 电压/电流/功率信号可以在不同节点间传递
@@ -1848,49 +1852,49 @@ impl ElectricNodeGraphApp {
             }
         }
     }
-    
+
     // 更新节点依赖关系
     fn update_dependencies(&mut self) {
         // 实现节点依赖关系图的更新
         // 这对于确定计算顺序很重要
     }
-    
+
     // 使受影响的节点计算结果失效
     fn invalidate_affected_nodes(&mut self, start_node_id: egui_node_graph::NodeId) {
         // 清除当前节点及所有下游节点的计算结果缓存
         let affected_nodes = self.find_downstream_nodes(start_node_id);
-        
+
         for node_id in affected_nodes {
             // 清除与该节点相关的所有缓存项
             let cache_keys: Vec<String> = self.calculation_cache.keys()
                 .filter(|key| key.contains(&node_id.0.to_string()))
                 .cloned()
                 .collect();
-                
+
             for key in cache_keys {
                 self.calculation_cache.remove(&key);
             }
         }
     }
-    
+
     // 查找下游节点
     fn find_downstream_nodes(&self, start_node_id: egui_node_graph::NodeId) -> Vec<egui_node_graph::NodeId> {
         let mut downstream = Vec::new();
         let mut visited = std::collections::HashSet::new();
-        
+
         self.find_downstream_recursive(start_node_id, &mut downstream, &mut visited);
         downstream
     }
-    
+
     // 递归查找下游节点
-    fn find_downstream_recursive(&self, node_id: egui_node_graph::NodeId, downstream: &mut Vec<egui_node_graph::NodeId>, 
+    fn find_downstream_recursive(&self, node_id: egui_node_graph::NodeId, downstream: &mut Vec<egui_node_graph::NodeId>,
                                visited: &mut std::collections::HashSet<egui_node_graph::NodeId>) {
         if visited.contains(&node_id) {
             return;
         }
-        
+
         visited.insert(node_id);
-        
+
         // 找到所有使用此节点输出的下游节点
         for connection in &self.graph.connections {
             if connection.output.node_id == node_id {
@@ -1900,7 +1904,7 @@ impl ElectricNodeGraphApp {
             }
         }
     }
-    
+
     // 查找参数所属的节点
     fn find_node_by_param_id(&self, param_id: egui_node_graph::ParamId) -> Option<egui_node_graph::NodeId> {
         // 遍历所有节点查找参数ID
@@ -1920,13 +1924,13 @@ impl ElectricNodeGraphApp {
         }
         None
     }
-    
+
     // 打开节点属性编辑对话框
     fn open_node_properties_dialog(&mut self, node_id: egui_node_graph::NodeId) {
         // 这里可以实现节点属性对话框
         // 例如编辑节点参数、调整计算选项等
     }
-    
+
     // 节点添加后的处理
     fn on_node_added(&mut self, node_id: egui_node_graph::NodeId, template: &ElectricNodeTemplate) {
         // 根据节点类型初始化默认值或连接
@@ -1937,27 +1941,27 @@ impl ElectricNodeGraphApp {
             _ => {}
         }
     }
-    
+
     // 初始化配电回路节点
     fn initialize_circuit_node(&mut self, node_id: egui_node_graph::NodeId) {
         // 设置默认参数值
     }
-    
+
     // 初始化配电箱节点
     fn initialize_distribution_box_node(&mut self, node_id: egui_node_graph::NodeId) {
         // 设置默认参数值和三相平衡信息
     }
-    
+
     // 初始化电源节点
     fn initialize_power_source_node(&mut self, node_id: egui_node_graph::NodeId) {
         // 设置默认电压、频率等值
     }
-    
+
     // 节点删除后的清理
     fn on_node_removed(&mut self, node_id: egui_node_graph::NodeId) {
         // 清理相关计算缓存
         self.invalidate_affected_nodes(node_id);
-        
+
         // 清理选中状态
         if let Some(pos) = self.selected_nodes.iter().position(|&id| id == node_id) {
             self.selected_nodes.remove(pos);
@@ -1976,24 +1980,24 @@ impl MyNodeGraphApp {
     fn topological_sort(&self) -> Vec<egui_node_graph::NodeId> {
         let mut visited = std::collections::HashSet::new();
         let mut result = Vec::new();
-        
+
         // 从没有输入的节点开始（通常是输入节点）
         for node_id in self.graph.nodes.keys() {
             if !visited.contains(&node_id) && self.is_node_independent(node_id) {
                 self.dfs_visit(node_id, &mut visited, &mut result);
             }
         }
-        
+
         // 确保所有节点都被访问
         for node_id in self.graph.nodes.keys() {
             if !visited.contains(&node_id) {
                 self.dfs_visit(node_id, &mut visited, &mut result);
             }
         }
-        
+
         result
     }
-    
+
     // 深度优先搜索访问节点
     fn dfs_visit(
         &self,
@@ -2002,7 +2006,7 @@ impl MyNodeGraphApp {
         result: &mut Vec<egui_node_graph::NodeId>,
     ) {
         visited.insert(node_id);
-        
+
         // 找到所有依赖当前节点的节点
         for (_, output_id) in &self.graph.nodes[node_id].outputs {
             // 找到连接到这个输出的所有输入
@@ -2016,11 +2020,11 @@ impl MyNodeGraphApp {
                 }
             }
         }
-        
+
         // 将当前节点添加到结果中（后序遍历确保依赖节点先执行）
         result.push(node_id);
     }
-    
+
     // 判断节点是否没有依赖（独立节点）
     fn is_node_independent(&self, node_id: egui_node_graph::NodeId) -> bool {
         // 检查节点的所有输入参数
@@ -2032,7 +2036,7 @@ impl MyNodeGraphApp {
         }
         true
     }
-    
+
     // 获取节点输入参数的值
     fn get_input_value(
         &self,
@@ -2043,16 +2047,16 @@ impl MyNodeGraphApp {
             // 如果有连接，需要找到对应的输出节点并获取其计算结果
             // 这里简化处理，实际应用中应该缓存计算结果
             let output_param = &self.graph.outputs[*output_id];
-            
+
             // 找到输出所属的节点
             let output_node_id = self.find_node_by_output(*output_id)?;
             let node_data = &self.graph.nodes[output_node_id];
-            
+
             // 根据节点类型和输出索引计算结果
             // 这是一个简化的示例，实际应用中应该有更复杂的逻辑
             // let result = self.calculate_node_output(output_node_id, output_id);
             // return Some(result);
-            
+
             // 由于计算可能很复杂，这里返回一个默认值作为示例
             return match output_param.typ {
                 MyAppDataType::Float => Some(MyAppValueType::Float(0.0)),
@@ -2064,7 +2068,7 @@ impl MyNodeGraphApp {
             // 如果没有连接，返回输入参数的默认值
             let input_param = &self.graph.inputs[input_id];
             match input_param.kind {
-                egui_node_graph::InputParamKind::Constant | 
+                egui_node_graph::InputParamKind::Constant |
                 egui_node_graph::InputParamKind::ConnectionOrConstant => {
                     Some(input_param.value.clone())
                 },
@@ -2072,7 +2076,7 @@ impl MyNodeGraphApp {
             }
         }
     }
-    
+
     // 根据输出ID查找对应的节点
     fn find_node_by_output(&self, output_id: egui_node_graph::OutputId) -> Option<egui_node_graph::NodeId> {
         for (node_id, node) in &self.graph.nodes {
@@ -2091,7 +2095,7 @@ impl MyNodeGraphApp {
 
 ### 5.1 自定义连接样式
 
-你可以通过扩展或修改库的UI渲染逻辑来自定义连接线条的样式。一种方法是创建一个自定义的连接绘制函数：
+你可以通过扩展或修改库的 UI 渲染逻辑来自定义连接线条的样式。一种方法是创建一个自定义的连接绘制函数：
 
 ```rust
 fn draw_custom_connection(
@@ -2104,15 +2108,15 @@ fn draw_custom_connection(
 ) {
     // 实现自定义的连接线绘制逻辑
     // 例如绘制带箭头的曲线
-    
+
     // 获取绘图上下文
     let painter = ui.painter_at(response.rect);
-    
+
     // 计算控制点以创建平滑曲线
     let mid_point = (start + end) * 0.5;
     let control_point1 = egui::Pos2::new(mid_point.x - 50.0, mid_point.y);
     let control_point2 = egui::Pos2::new(mid_point.x + 50.0, mid_point.y);
-    
+
     // 绘制贝塞尔曲线
     painter.add(egui::Shape::Path(egui::PathShape {
         points: vec![start, control_point1, control_point2, end],
@@ -2120,7 +2124,7 @@ fn draw_custom_connection(
         fill: egui::Color32::TRANSPARENT,
         stroke: egui::Stroke::new(thickness, color),
     }));
-    
+
     // 绘制箭头
     // ...
 }
@@ -2153,7 +2157,7 @@ struct EnhancedNodeGraphApp {
     // 原有的字段
     graph: egui_node_graph::Graph<MyAppNodeData, MyAppDataType, MyAppValueType>,
     editor_state: GraphEditorState,
-    
+
     // 新增的字段
     groups: Vec<NodeGroup>,
     annotations: Vec<Annotation>,
@@ -2167,7 +2171,7 @@ fn draw_groups_and_annotations(
     annotations: &[Annotation],
 ) {
     let painter = ui.painter_at(response.rect);
-    
+
     // 绘制分组背景
     for group in groups {
         painter.rect(
@@ -2184,7 +2188,7 @@ fn draw_groups_and_annotations(
             egui::Color32::WHITE,
         );
     }
-    
+
     // 绘制注释
     for annotation in annotations {
         let rect = egui::Rect::from_min_size(annotation.position, annotation.size);
@@ -2221,7 +2225,7 @@ fn enhanced_node_finder(
         ui.label("Search nodes:");
         ui.text_edit_singleline(search_query);
     });
-    
+
     // 过滤模板
     let filtered_templates: Vec<_> = templates
         .iter()
@@ -2230,7 +2234,7 @@ fn enhanced_node_finder(
             template.category().to_lowercase().contains(&search_query.to_lowercase())
         })
         .collect();
-    
+
     // 按类别分组显示
     let mut categories = std::collections::HashMap::new();
     for template in &filtered_templates {
@@ -2239,7 +2243,7 @@ fn enhanced_node_finder(
             .or_insert_with(Vec::new)
             .push(*template);
     }
-    
+
     // 显示分类后的节点列表
     let mut selected = false;
     for (category, category_templates) in categories {
@@ -2255,7 +2259,7 @@ fn enhanced_node_finder(
             }
         });
     }
-    
+
     selected
 }
 ```
@@ -2303,7 +2307,7 @@ impl MyNodeGraphApp {
     fn execute_node(&mut self, node_id: egui_node_graph::NodeId) -> Option<MyAppValueType> {
         let node = &self.graph.nodes[node_id];
         let node_data = &node.user_data;
-        
+
         match node_data.node_type {
             MyAppNodeType::Math => {
                 // 收集输入值
@@ -2315,7 +2319,7 @@ impl MyNodeGraphApp {
                         }
                     }
                 }
-                
+
                 // 执行计算
                 if let Some(result) = calculate_math_operation(node_data.math_op.clone(), &input_values) {
                     // 存储结果以便输出端口使用
@@ -2334,7 +2338,7 @@ impl MyNodeGraphApp {
             // 处理其他类型的节点...
             _ => {},
         }
-        
+
         None
     }
 }
@@ -2371,7 +2375,7 @@ fn process_image(
 ) -> ImageData {
     // 实现各种图像处理操作
     // ...
-    
+
     // 返回处理后的图像
     image.clone() // 简化处理，返回原图
 }
@@ -2388,7 +2392,7 @@ struct ImageProcessingApp {
     // 基础图数据和状态
     graph: egui_node_graph::Graph<EnhancedNodeData, EnhancedDataType, EnhancedValueType>,
     editor_state: GraphEditorState,
-    
+
     // 图像处理特定数据
     images: std::collections::HashMap<egui_node_graph::NodeId, ImageData>,
     loaded_images: std::collections::HashMap<String, ImageData>,
@@ -2414,7 +2418,7 @@ fn log_node_execution(node_id: egui_node_graph::NodeId, inputs: &[MyAppValueType
 impl MyNodeGraphApp {
     fn execute_node_with_debug(&mut self, node_id: egui_node_graph::NodeId) -> Option<MyAppValueType> {
         let node = &self.graph.nodes[node_id];
-        
+
         // 收集输入值用于日志
         let mut input_values = Vec::new();
         for (_, input_id) in &node.inputs {
@@ -2422,13 +2426,13 @@ impl MyNodeGraphApp {
                 input_values.push(value);
             }
         }
-        
+
         // 执行节点
         let result = self.execute_node(node_id);
-        
+
         // 记录日志
         log_node_execution(node_id, &input_values, result.clone());
-        
+
         result
     }
 }
@@ -2443,7 +2447,7 @@ impl MyNodeGraphApp {
 ```rust
 struct OptimizedNodeGraphApp {
     // 原有字段...
-    
+
     // 计算结果缓存
     result_cache: std::collections::HashMap<egui_node_graph::OutputId, MyAppValueType>,
     // 节点更新标志
@@ -2455,10 +2459,10 @@ impl OptimizedNodeGraphApp {
     fn execute_graph_optimized(&mut self) {
         // 只重新计算需要更新的节点及其依赖
         let mut nodes_to_update = self.node_needs_update.clone();
-        
+
         // 确定受影响的节点
         self.propagate_update_needs(&mut nodes_to_update);
-        
+
         // 按拓扑顺序执行需要更新的节点
         let execution_order = self.topological_sort();
         for node_id in execution_order {
@@ -2466,18 +2470,18 @@ impl OptimizedNodeGraphApp {
                 self.execute_node_and_cache(node_id);
             }
         }
-        
+
         // 清除更新标志
         self.node_needs_update.clear();
     }
-    
+
     // 执行节点并缓存结果
     fn execute_node_and_cache(&mut self, node_id: egui_node_graph::NodeId) {
         let node = &self.graph.nodes[node_id];
-        
+
         // 执行节点计算
         let node_result = self.execute_node(node_id);
-        
+
         // 缓存结果到所有输出端口
         if let Some(result) = node_result {
             for (_, output_id) in &node.outputs {
@@ -2485,12 +2489,12 @@ impl OptimizedNodeGraphApp {
             }
         }
     }
-    
+
     // 传播更新需求
     fn propagate_update_needs(&self, nodes_to_update: &mut std::collections::HashSet<egui_node_graph::NodeId>) {
         // 找到所有依赖于需要更新节点的节点
         let mut newly_affected = std::collections::HashSet::new();
-        
+
         for node_id in nodes_to_update.iter() {
             // 找到所有依赖此节点的节点
             for (_, output_id) in &self.graph.nodes[*node_id].outputs {
@@ -2504,17 +2508,17 @@ impl OptimizedNodeGraphApp {
                 }
             }
         }
-        
+
         // 添加新发现的受影响节点并递归传播
         for node_id in newly_affected {
             nodes_to_update.insert(node_id);
         }
-        
+
         if !newly_affected.is_empty() {
             self.propagate_update_needs(nodes_to_update);
         }
     }
-    
+
     // 当节点或连接发生变化时，标记节点需要更新
     fn mark_node_for_update(&mut self, node_id: egui_node_graph::NodeId) {
         self.node_needs_update.insert(node_id);
@@ -2533,7 +2537,7 @@ impl OptimizedNodeGraphApp {
 
 ## 8. 建筑电气配电系统图设计工具实现
 
-本节将根据专利文档《一种基于节点编辑器的建筑电气配电系统图的高效设计工具》，详细介绍如何在egui_node_graph基础上实现建筑电气配电系统图的高效设计功能。
+本节将根据专利文档《一种基于节点编辑器的建筑电气配电系统图的高效设计工具》，详细介绍如何在 egui_node_graph 基础上实现建筑电气配电系统图的高效设计功能。
 
 ### 8.1 配电回路节点实现
 
@@ -2588,37 +2592,37 @@ impl CircuitNodeData {
                 self.current = self.power * 1000.0 / (1.732 * self.voltage * 0.85);
             },
         }
-        
+
         // 计算1.1倍和1.25倍电流值
         self.current_1_1x = self.current * 1.1;
         self.current_1_25x = self.current * 1.25;
     }
-    
+
     // 智能选型
     fn select_components(&mut self) {
         // 1. 选择元器件
         self.component_current = self.select_component_current();
         self.component_type = self.select_component_type();
-        
+
         // 2. 选择线缆规格
         self.cable_spec = self.select_cable_spec();
     }
-    
+
     // 根据计算电流选择元器件电流整定值
     fn select_component_current(&self) -> f64 {
         // 根据电流查询内置选型表，选择合适的整定值
         // 这里简化处理，实际应用中应查询完整的选型表
         let standard_values = [1, 2, 4, 6, 10, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125];
-        
+
         for &value in &standard_values {
             if value as f64 >= self.current_1_1x {
                 return value as f64;
             }
         }
-        
+
         125.0 // 默认值
     }
-    
+
     // 根据回路用途选择元器件类型
     fn select_component_type(&self) -> String {
         match self.purpose {
@@ -2630,7 +2634,7 @@ impl CircuitNodeData {
 ", s),
         }
     }
-    
+
     // 选择线缆规格
     fn select_cable_spec(&self) -> String {
         // 根据电流选择线缆规格，简化处理
@@ -2676,13 +2680,13 @@ impl DistributionBoxNodeData {
         sorted_indices.sort_by(|&i, &j| {
             circuit_nodes[i].power.partial_cmp(&circuit_nodes[j].power).unwrap_or(std::cmp::Ordering::Equal)
         });
-        
+
         // 分配编号
         for (idx, &original_idx) in sorted_indices.iter().enumerate() {
             circuit_nodes[original_idx].circuit_number = (idx + 1) as u32;
         }
     }
-    
+
     // 三相平衡算法
     fn balance_three_phases(&mut self, circuit_nodes: &mut [CircuitNodeData]) {
         // 1. 初始化分配：将回路按顺序分配到各相
@@ -2692,26 +2696,26 @@ impl DistributionBoxNodeData {
             circuit.phase = Some(phases[phase_idx + 1]);
             self.phase_loads[phase_idx] += circuit.power;
         }
-        
+
         // 2. 迭代优化平衡
         let mut iterations = 0;
         let max_iterations = 100;
         let tolerance = 0.01; // 允许的不平衡度
-        
+
         while iterations < max_iterations {
             let total_power: f64 = self.phase_loads.iter().sum();
             let avg_power = total_power / 3.0;
-            
+
             // 检查是否已平衡
             let max_diff = self.phase_loads.iter().map(|&p| (p - avg_power).abs()).fold(0.0, f64::max);
             if max_diff / avg_power < tolerance {
                 break;
             }
-            
+
             // 找到负载最大的相和最小的相
             let mut max_phase = 0;
             let mut min_phase = 0;
-            
+
             for i in 1..3 {
                 if self.phase_loads[i] > self.phase_loads[max_phase] {
                     max_phase = i;
@@ -2720,7 +2724,7 @@ impl DistributionBoxNodeData {
                     min_phase = i;
                 }
             }
-            
+
             // 从最大负载相转移一个回路到最小负载相
             if let Some((circuit_idx, _)) = circuit_nodes
                 .iter()
@@ -2739,37 +2743,37 @@ impl DistributionBoxNodeData {
                 self.phase_loads[min_phase] += circuit.power;
                 circuit.phase = Some(phases[min_phase + 1]);
             }
-            
+
             iterations += 1;
         }
     }
-    
+
     // 计算总功率和电流
     fn calculate_total_power(&mut self, circuit_nodes: &[CircuitNodeData]) {
         self.total_power = circuit_nodes.iter().map(|c| c.power).sum();
-        
+
         // 计算总电流 (假设三相380V，功率因数0.85)
         self.total_current = self.total_power * 1000.0 / (1.732 * 380.0 * 0.85);
-        
+
         // 确定进线保护设备电流整定值
         self.calculate_incoming_current();
     }
-    
+
     // 计算进线保护设备电流整定值
     fn calculate_incoming_current(&mut self) {
         // 根据总电流和规范要求确定进线保护设备电流整定值
         let standard_values = [100, 125, 160, 200, 250, 315, 400, 500, 630];
-        
+
         // 进线电流通常考虑1.2倍的安全系数
         let required_current = self.total_current * 1.2;
-        
+
         for &value in &standard_values {
             if value as f64 >= required_current {
                 self.incoming_current = value as f64;
                 return;
             }
         }
-        
+
         self.incoming_current = 630.0; // 默认值
     }
 }
@@ -2800,13 +2804,13 @@ impl MainSystemNodeData {
     // 自动映射功能
     fn auto_map_distribution_boxes(&self, boxes: &[DistributionBoxNodeData]) -> Vec<SystemDiagram> {
         let mut diagrams = Vec::new();
-        
+
         // 按楼层对配电箱进行分组
         let mut boxes_by_floor: std::collections::BTreeMap<u32, Vec<&DistributionBoxNodeData>> = std::collections::BTreeMap::new();
         for box_node in boxes {
             boxes_by_floor.entry(box_node.floor).or_default().push(box_node);
         }
-        
+
         // 生成各类系统图
         for &system_type in &self.systems {
             match system_type {
@@ -2823,7 +2827,7 @@ impl MainSystemNodeData {
                         })
                         .map(|(&floor, boxes)| (floor, boxes.clone()))
                         .collect();
-                    
+
                     let diagram = self.generate_energy_monitoring_diagram(&filtered_boxes);
                     diagrams.push(diagram);
                 },
@@ -2835,48 +2839,48 @@ impl MainSystemNodeData {
                 },
             }
         }
-        
+
         diagrams
     }
-    
+
     // 生成配电干线系统图
     fn generate_power_distribution_diagram(&self, boxes_by_floor: &std::collections::BTreeMap<u32, Vec<&DistributionBoxNodeData>>) -> SystemDiagram {
         let mut diagram = SystemDiagram::new("配电干线系统图".to_string());
-        
+
         // 创建母线
         let busbar = diagram.add_component(ComponentType::Busbar, "主母线".to_string());
-        
+
         // 按楼层自下而上添加配电箱
         let mut last_component = busbar;
         for (floor, boxes) in boxes_by_floor.iter().rev() {
             for box_node in boxes {
                 let box_component = diagram.add_component(
                     ComponentType::DistributionBox,
-                    format!("{}\n楼层:{}\n功率:{:.2}kW\n电流:{:.2}A", 
+                    format!("{}\n楼层:{}\n功率:{:.2}kW\n电流:{:.2}A",
                             box_node.name, floor, box_node.total_power, box_node.incoming_current)
                 );
-                
+
                 // 添加连线
                 diagram.add_connection(last_component, box_component);
-                
+
                 // 判断进线类型并生成相应的连线
                 let connection_type = if box_node.modules.contains(&"双电源切换".to_string()) {
                     ConnectionType::DualPower
                 } else {
                     ConnectionType::SinglePower
                 };
-                
+
                 diagram.set_connection_type(last_component, box_component, connection_type);
             }
         }
-        
+
         if self.auto_layout {
             self.auto_layout_diagram(&mut diagram);
         }
-        
+
         diagram
     }
-    
+
     // 自动布局算法
     fn auto_layout_diagram(&self, diagram: &mut SystemDiagram) {
         // 实现干线系统图的自动布局算法
@@ -2926,7 +2930,7 @@ impl SystemDiagram {
             connections: Vec::new(),
         }
     }
-    
+
     fn add_component(&mut self, component_type: ComponentType, label: String) -> usize {
         let id = self.components.len();
         self.components.push(DiagramComponent {
@@ -2937,7 +2941,7 @@ impl SystemDiagram {
         });
         id
     }
-    
+
     fn add_connection(&mut self, from: usize, to: usize) {
         self.connections.push(DiagramConnection {
             from,
@@ -2945,7 +2949,7 @@ impl SystemDiagram {
             connection_type: ConnectionType::SinglePower, // 默认连接类型
         });
     }
-    
+
     fn set_connection_type(&mut self, from: usize, to: usize, connection_type: ConnectionType) {
         for connection in &mut self.connections {
             if connection.from == from && connection.to == to {
@@ -2967,15 +2971,15 @@ struct PowerDistributionApp {
     // 基础图数据和状态
     graph: egui_node_graph::Graph<PowerNodeData, PowerDataType, PowerValueType>,
     editor_state: GraphEditorState,
-    
+
     // 组件库
     circuit_nodes: Vec<CircuitNodeData>,
     distribution_boxes: Vec<DistributionBoxNodeData>,
     main_system_nodes: Vec<MainSystemNodeData>,
-    
+
     // 更新状态
     nodes_to_update: std::collections::HashSet<egui_node_graph::NodeId>,
-    
+
     // 计算缓存
     calculation_cache: std::collections::HashMap<egui_node_graph::NodeId, PowerValueType>,
 }
@@ -3015,25 +3019,25 @@ impl PowerDistributionApp {
     fn propagate_updates(&mut self) {
         // 1. 确定需要更新的节点顺序（拓扑排序）
         let execution_order = self.perform_topological_sort();
-        
+
         // 2. 按顺序更新节点
         for node_id in execution_order {
             if self.nodes_to_update.contains(&node_id) {
                 self.update_node(node_id);
-                
+
                 // 3. 更新受影响的下游节点
                 self.mark_downstream_nodes_for_update(node_id);
             }
         }
-        
+
         // 4. 清除更新标志
         self.nodes_to_update.clear();
     }
-    
+
     // 更新单个节点
     fn update_node(&mut self, node_id: egui_node_graph::NodeId) {
         let node = &mut self.graph.nodes[node_id];
-        
+
         match &mut node.user_data {
             PowerNodeData::Circuit(circuit) => {
                 // 更新配电回路节点
@@ -3043,7 +3047,7 @@ impl PowerDistributionApp {
             PowerNodeData::DistributionBox(box_node) => {
                 // 收集所有连接到该配电箱的回路节点
                 let mut connected_circuits = Vec::new();
-                
+
                 for (input_id, connected_output_id) in &self.graph.connections {
                     let input = &self.graph.inputs[*input_id];
                     if input.node == node_id {
@@ -3057,13 +3061,13 @@ impl PowerDistributionApp {
                         }
                     }
                 }
-                
+
                 // 更新配电箱数据
                 let mut circuit_data = connected_circuits.iter_mut().collect::<Vec<_>>();
                 box_node.calculate_total_power(&connected_circuits);
                 box_node.auto_number_circuits(&mut circuit_data);
                 box_node.balance_three_phases(&mut circuit_data);
-                
+
                 // 更新回路数据
                 for (i, circuit) in connected_circuits.iter().enumerate() {
                     // 这里应该找到对应的节点并更新
@@ -3073,7 +3077,7 @@ impl PowerDistributionApp {
             PowerNodeData::MainSystem(system_node) => {
                 // 收集所有连接的配电箱节点
                 let mut connected_boxes = Vec::new();
-                
+
                 for (input_id, connected_output_id) in &self.graph.connections {
                     let input = &self.graph.inputs[*input_id];
                     if input.node == node_id {
@@ -3087,10 +3091,10 @@ impl PowerDistributionApp {
                         }
                     }
                 }
-                
+
                 // 生成系统图
                 let diagrams = system_node.auto_map_distribution_boxes(&connected_boxes);
-                
+
                 // 存储生成的系统图
                 for diagram in diagrams {
                     // 实际应用中应将系统图关联到节点
@@ -3098,7 +3102,7 @@ impl PowerDistributionApp {
             },
         }
     }
-    
+
     // 标记下游节点需要更新
     fn mark_downstream_nodes_for_update(&mut self, node_id: egui_node_graph::NodeId) {
         // 找到所有依赖此节点的下游节点
@@ -3109,38 +3113,38 @@ impl PowerDistributionApp {
                 // 找到输入节点
                 let input = &self.graph.inputs[*input_id];
                 let downstream_node_id = input.node;
-                
+
                 // 标记为需要更新
                 self.nodes_to_update.insert(downstream_node_id);
-                
+
                 // 递归标记
                 self.mark_downstream_nodes_for_update(downstream_node_id);
             }
         }
     }
-    
+
     // 执行拓扑排序
     fn perform_topological_sort(&self) -> Vec<egui_node_graph::NodeId> {
         // 实现拓扑排序算法，确保节点按依赖关系顺序执行
         // 简化实现，实际应用中应使用更完善的算法
         let mut visited = std::collections::HashSet::new();
         let mut result = Vec::new();
-        
+
         // 从无入度的节点开始
         for (node_id, node) in &self.graph.nodes {
             if !visited.contains(node_id) {
                 self.dfs_visit(node_id, &mut visited, &mut result);
             }
         }
-        
+
         result.reverse(); // 反转结果以获得正确的拓扑顺序
         result
     }
-    
+
     // 深度优先遍历辅助函数
     fn dfs_visit(&self, node_id: &egui_node_graph::NodeId, visited: &mut std::collections::HashSet<egui_node_graph::NodeId>, result: &mut Vec<egui_node_graph::NodeId>) {
         visited.insert(*node_id);
-        
+
         // 找到所有依赖此节点的下游节点
         for (input_id, connected_output_id) in &self.graph.connections {
             // 检查是否是当前节点的输出
@@ -3149,16 +3153,16 @@ impl PowerDistributionApp {
                 // 找到输入节点
                 let input = &self.graph.inputs[*input_id];
                 let downstream_node_id = input.node;
-                
+
                 if !visited.contains(&downstream_node_id) {
                     self.dfs_visit(&downstream_node_id, visited, result);
                 }
             }
         }
-        
+
         result.push(*node_id);
     }
-    
+
     // 实现WidgetValueTrait以支持自定义控件
     // ...
 }
@@ -3173,7 +3177,7 @@ impl eframe::App for PowerDistributionApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::SidePanel::left("node_palette").show(ctx, |ui| {
             ui.heading("组件库");
-            
+
             // 配电回路节点
             ui.collapsing("配电回路", |ui| {
                 if ui.button("单相配电回路").clicked() {
@@ -3183,14 +3187,14 @@ impl eframe::App for PowerDistributionApp {
                     self.add_circuit_node(CircuitType::ThreePhase);
                 }
             });
-            
+
             // 配电箱节点
             ui.collapsing("配电箱", |ui| {
                 if ui.button("标准配电箱").clicked() {
                     self.add_distribution_box_node();
                 }
             });
-            
+
             // 干线系统图节点
             ui.collapsing("干线系统", |ui| {
                 if ui.button("干线系统图").clicked() {
@@ -3198,7 +3202,7 @@ impl eframe::App for PowerDistributionApp {
                 }
             });
         });
-        
+
         // 主编辑区域
         egui::CentralPanel::default().show(ctx, |ui| {
             egui::ScrollArea::both().show(ui, |ui| {
@@ -3209,17 +3213,17 @@ impl eframe::App for PowerDistributionApp {
                     &mut PowerDistributionNodeTemplateProvider {},
                     &mut PowerDistributionWidgetValueProvider {},
                 );
-                
+
                 // 处理节点选择
                 if let Some(selected_node) = response.selected_node {
                     self.show_node_properties(ui, selected_node);
                 }
-                
+
                 // 处理连接创建
                 if let Some((from, to)) = response.created_connection {
                     self.handle_new_connection(from, to);
                 }
-                
+
                 // 处理节点移动
                 if let Some(moved_nodes) = response.moved_nodes {
                     for node_id in moved_nodes {
@@ -3229,20 +3233,20 @@ impl eframe::App for PowerDistributionApp {
                         }
                     }
                 }
-                
+
                 // 处理节点删除
                 if let Some(deleted_node) = response.deleted_node {
                     self.handle_node_deletion(deleted_node);
                 }
             });
         });
-        
+
         // 右侧属性面板
         egui::SidePanel::right("properties").show(ctx, |ui| {
             ui.heading("属性编辑");
             // 属性编辑内容在show_node_properties中处理
         });
-        
+
         // 底部状态栏
         egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -3258,23 +3262,23 @@ impl PowerDistributionApp {
     fn check_if_node_dropped_into_box(&self, node_id: egui_node_graph::NodeId) -> Option<egui_node_graph::NodeId> {
         // 1. 获取被移动节点的位置
         let node_pos = self.editor_state.node_positions.get(&node_id)?;
-        
+
         // 2. 检查是否在某个配电箱节点范围内
         for (box_id, box_node) in &self.graph.nodes {
             if let Some(box_pos) = self.editor_state.node_positions.get(box_id) {
                 if let PowerNodeData::DistributionBox(_) = &box_node.user_data {
                     // 简化处理，实际应用中应检查精确的边界
-                    if (node_pos.0 - box_pos.0).abs() < 100.0 && 
+                    if (node_pos.0 - box_pos.0).abs() < 100.0 &&
                        (node_pos.1 - box_pos.1).abs() < 100.0 {
                         return Some(*box_id);
                     }
                 }
             }
         }
-        
+
         None
     }
-    
+
     // 移动配电回路到配电箱
     fn move_circuit_to_box(&mut self, circuit_id: egui_node_graph::NodeId, box_id: egui_node_graph::NodeId) {
         // 1. 检查节点类型
@@ -3282,20 +3286,20 @@ impl PowerDistributionApp {
            !matches!(&self.graph.nodes[box_id].user_data, PowerNodeData::DistributionBox(_)) {
             return;
         }
-        
+
         // 2. 创建连接
         let circuit_output_id = *self.graph.nodes[circuit_id].outputs.values().next()?;
         let box_input_id = *self.graph.nodes[box_id].inputs.values().next()?;
-        
+
         self.graph.connections.insert(box_input_id, circuit_output_id);
-        
+
         // 3. 标记节点需要更新
         self.nodes_to_update.insert(box_id);
-        
+
         // 4. 触发更新传播
         self.propagate_updates();
     }
-    
+
     // 显示节点属性
     fn show_node_properties(&mut self, ui: &mut egui::Ui, node_id: egui_node_graph::NodeId) {
         if let Some(node) = self.graph.nodes.get_mut(node_id) {
@@ -3306,12 +3310,12 @@ impl PowerDistributionApp {
                     if ui.button("更新计算").clicked() {
                         circuit.calculate_current();
                         circuit.select_components();
-                        
+
                         // 标记下游节点需要更新
                         self.nodes_to_update.insert(node_id);
                         self.propagate_updates();
                     }
-                    
+
                     // 显示计算结果
                     ui.group(|ui| {
                         ui.label(format!("计算电流: {:.2} A", circuit.current));
@@ -3330,7 +3334,7 @@ impl PowerDistributionApp {
                     ui.heading("配电箱属性");
                     ui.text_edit_singleline(&mut box_node.name);
                     ui.add(egui::Slider::new(&mut box_node.floor, 1..=50).text("所在楼层"));
-                    
+
                     // 显示计算结果
                     ui.group(|ui| {
                         ui.label(format!("总功率: {:.2} kW", box_node.total_power));
@@ -3340,7 +3344,7 @@ impl PowerDistributionApp {
                         ui.label(format!("L2相负载: {:.2} kW", box_node.phase_loads[1]));
                         ui.label(format!("L3相负载: {:.2} kW", box_node.phase_loads[2]));
                     });
-                    
+
                     // 三相平衡控制
                     if ui.button("重新平衡三相").clicked() {
                         // 实现重新平衡逻辑
@@ -3351,14 +3355,14 @@ impl PowerDistributionApp {
                 PowerNodeData::MainSystem(system_node) => {
                     ui.heading("干线系统图属性");
                     ui.checkbox(&mut system_node.auto_layout, "自动布局");
-                    
+
                     // 系统类型选择
                     ui.label("包含系统图:");
                     ui.checkbox(&mut system_node.systems.contains(&MainSystemType::PowerDistribution), "配电干线图");
                     ui.checkbox(&mut system_node.systems.contains(&MainSystemType::EnergyMonitoring), "能耗监测干线图");
                     ui.checkbox(&mut system_node.systems.contains(&MainSystemType::ElectricalFireMonitoring), "电气火灾监控干线图");
                     ui.checkbox(&mut system_node.systems.contains(&MainSystemType::FirePowerMonitoring), "消防电源监测干线图");
-                    
+
                     if ui.button("更新系统图").clicked() {
                         self.nodes_to_update.insert(node_id);
                         self.propagate_updates();
@@ -3374,7 +3378,7 @@ impl PowerDistributionApp {
 
 为干线系统图节点添加自动识别配电箱进线类型和生成连线的功能：
 
-```rust
+````rust
 impl DistributionBoxNodeData {
     // 判断进线类型
     fn determine_incoming_type(&self) -> IncomingType {
@@ -3395,23 +3399,23 @@ impl MainSystemNodeData {
     // 根据进线类型自动生成连线
     fn auto_generate_connections(&self, boxes: &[DistributionBoxNodeData]) -> Vec<ConnectionInfo> {
         let mut connections = Vec::new();
-        
+
         // 1. 按楼层排序配电箱
         let mut sorted_boxes = boxes.to_vec();
         sorted_boxes.sort_by(|a, b| a.floor.cmp(&b.floor));
-        
+
         // 2. 生成连线
         let mut previous_boxes: Vec<&DistributionBoxNodeData> = Vec::new();
-        
+
         for box_node in &sorted_boxes {
             // 确定父配电箱（通常是上一楼层的配电箱）
             if let Some(parent_box) = previous_boxes.iter()
                 .filter(|b| b.floor < box_node.floor)
                 .max_by_key(|b| b.floor) {
-                
+
                 // 根据进线类型生成连线
                 let incoming_type = box_node.determine_incoming_type();
-                
+
                 connections.push(ConnectionInfo {
                     from: parent_box.name.clone(),
                     to: box_node.name.clone(),
@@ -3420,7 +3424,7 @@ impl MainSystemNodeData {
                         IncomingType::DualPower => ConnectionType::DualPower,
                     },
                 });
-                
+
                 // 如果是双电源，还需要连接备用电源
                 if let IncomingType::DualPower = incoming_type {
                     connections.push(ConnectionInfo {
@@ -3430,10 +3434,10 @@ impl MainSystemNodeData {
                     });
                 }
             }
-            
+
             previous_boxes.push(box_node);
         }
-        
+
         connections
     }
 }
@@ -3479,7 +3483,7 @@ impl DataTypeTrait for ElectricDataType {
             Self::PowerFactor => egui::Color32::YELLOW,
         }
     }
-    
+
     fn data_type_name(&self) -> &str {
         match self {
             Self::Current => "电流(A)",
@@ -3517,7 +3521,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
     type NodeData = ElectricNodeData;
     type DataType = ElectricDataType;
     type ValueType = ElectricValueType;
-    
+
     fn node_type_name(&self) -> &str {
         match self {
             Self::CircuitNode => "配电回路",
@@ -3525,7 +3529,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
             Self::PowerSourceNode => "电源",
         }
     }
-    
+
     fn node_template_category(&self) -> String {
         match self {
             Self::CircuitNode => "配电回路",
@@ -3533,7 +3537,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
             Self::PowerSourceNode => "电源",
         }
     }
-    
+
     fn node_template_outputs(&self) -> Vec<(String, Self::DataType)> {
         match self {
             Self::CircuitNode => vec![("电流输出".to_string(), Self::DataType::Current)],
@@ -3541,7 +3545,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
             Self::PowerSourceNode => vec![("电压输出".to_string(), Self::DataType::Voltage)],
         }
     }
-    
+
     fn node_template_inputs(&self) -> Vec<(String, Self::DataType)> {
         match self {
             Self::CircuitNode => vec![("电压输入".to_string(), Self::DataType::Voltage)],
@@ -3549,7 +3553,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
             Self::PowerSourceNode => vec![],
         }
     }
-    
+
     fn node_template_params(&self) -> Vec<(String, Self::ValueType)> {
         match self {
             Self::CircuitNode => vec![("额定功率(kW)".to_string(), Self::ValueType::Float(10.0))],
@@ -3557,7 +3561,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
             Self::PowerSourceNode => vec![("电压值(V)".to_string(), Self::ValueType::Float(220.0))],
         }
     }
-    
+
     fn construct_node_data(&self, params: &HashMap<String, Self::ValueType>) -> Self::NodeData {
         match self {
             Self::CircuitNode => {
@@ -3577,11 +3581,11 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
             },
         }
     }
-    
+
     fn update_node_data(&self, node_data: &mut Self::NodeData, params: &HashMap<String, Self::ValueType>) {
         // 更新节点数据逻辑
     }
-    
+
     fn node_label(&self, node_data: &Self::NodeData) -> String {
         match node_data {
             ElectricNodeData::CircuitNode { name, .. } => name.clone(),
@@ -3617,7 +3621,7 @@ impl eframe::App for ElectricNodeGraphApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("电气节点图设计工具");
-            
+
             // 渲染节点编辑器
             egui_node_graph::draw_graph_editor(
                 ui,
@@ -3626,7 +3630,7 @@ impl eframe::App for ElectricNodeGraphApp {
                 &self.templates,
                 |_, _| {}, // 自定义UI
             );
-            
+
             // 计算按钮
             if ui.button("运行计算").clicked() {
                 self.run_calculations();
@@ -3639,7 +3643,7 @@ impl ElectricNodeGraphApp {
     fn run_calculations(&mut self) {
         // 实现简单的计算逻辑
         // 例如：从电源获取电压，计算回路电流，汇总到配电箱
-        
+
         // 查找所有电源节点和电压值
         let mut voltage_map = HashMap::new();
         for (node_id, node) in &self.graph.nodes {
@@ -3647,7 +3651,7 @@ impl ElectricNodeGraphApp {
                 voltage_map.insert(name.clone(), voltage);
             }
         }
-        
+
         // 计算回路电流并汇总到配电箱
         for (node_id, node) in &mut self.graph.nodes.iter_mut() {
             if let ElectricNodeData::CircuitNode { name, power, current } = node.data.as_mut() {
@@ -3655,7 +3659,7 @@ impl ElectricNodeGraphApp {
                 let mut voltage = 220.0; // 默认值
                 for output_id in &node.inputs.values() {
                     if let Some(conn) = self.graph.connections.get(output_id) {
-                        if let ElectricNodeData::PowerSourceNode { name: source_name, .. } = 
+                        if let ElectricNodeData::PowerSourceNode { name: source_name, .. } =
                             &self.graph.nodes.get(&conn.from_node).unwrap().data {
                             if let Some(&v) = voltage_map.get(source_name) {
                                 voltage = v;
@@ -3664,7 +3668,7 @@ impl ElectricNodeGraphApp {
                         }
                     }
                 }
-                
+
                 // 计算电流: I = P / U
                 *current = *power * 1000.0 / voltage; // 转换为瓦特
             }
@@ -3678,18 +3682,18 @@ fn main() -> Result<(), eframe::Error> {
         initial_window_size: Some(egui::vec2(1200.0, 800.0)),
         ..Default::default()
     };
-    
+
     eframe::run_native(
         "电气节点图设计工具",
         options,
         Box::new(|_| Ok(Box::new(ElectricNodeGraphApp::default()))),
     )
 }
-```
+````
 
 ## 6. 依赖配置
 
-在项目的Cargo.toml文件中，需要添加以下依赖：
+在项目的 Cargo.toml 文件中，需要添加以下依赖：
 
 ```toml
 [package]
@@ -3716,6 +3720,7 @@ chrono = { version = "0.4.24", features = ["serde"] }
 5. **性能优化**：对于大型电路图，考虑使用并行计算和缓存机制提高性能
 
 通过遵循本指南，您可以构建一个功能完善、性能优良的电气节点图应用，满足建筑电气配电系统设计的需求。
+
 ```
 
 ## 9. 总结
@@ -3776,3 +3781,4 @@ egui_node_graph库提供了灵活的基础架构，通过实现各种trait和自
 
 - 修复了文档末尾的多余引号
 - 确保了代码块和格式的一致性
+```
