@@ -133,226 +133,78 @@ PDSD/
 
 所有数据类型均实现了序列化和反序列化功能，确保与现有代码保持一致，并提供了丰富的方法用于数据操作和转换。
 
-### 2.2 设计参数值类型（ValueType）
+5. **完整数据类型列表：**
 
-在电气配电系统中，我们需要定义与电气参数对应的具体值类型，包括电流、功率等基本参数，以及更复杂的配电回路和配电箱数据：
+| 数据类型名称 | 中文名称 | 简要描述 |
+|------------|---------|--------|
+| VoltageLevel | 电压等级 | 定义系统电压等级，如400V/750V等 |
+| LayingMethod | 敷设方式 | 定义线缆敷设方式，如焊接钢管、紧定管等 |
+| PipeSpecification | 穿管规格 | 定义穿管直径规格，如15mm、20mm等 |
+| LayingArea | 敷设部位 | 定义线缆敷设的具体部位，如沿墙暗敷、吊顶内明敷等 |
+| PhaseSequence | 相序 | 定义电路相序，如L1、L2、L3、L1L2L3等 |
+| CircuitNumber | 回路编号 | 用于按照输出端口连接顺序为回路分配编号 |
+| BreakerType | 断路器类型 | 定义各类断路器类型，如框架断路器、塑壳断路器等 |
+| FrameCurrent | 壳架电流 | 定义断路器壳架电流等级，如63A、100A等 |
+| BreakingCapacity | 分断能力 | 定义断路器分断能力等级，如F(36kA)、N(50kA)等 |
+| DeductionMethod | 脱扣方式 | 定义断路器脱扣方式，如热磁型(TM)、单磁型(MA)等 |
+| Pole | 极数 | 定义电气设备的极数，如1P、2P、3P、4P、1P+N、3P+N等 |
+| Curve | 脱扣曲线 | 定义断路器脱扣曲线类型，如B、C、D等 |
+| SettingValue | 整定电流值 | 定义电气设备的整定电流值，如16A、20A等 |
+| PhaseConfig | 相位配置 | 定义电气设备的相位配置，如单相、三相、三相四线等 |
+| Phase | 相序枚举 | 定义具体的相序，如L1(A相)、L2(B相)、L3(C相)等 |
+| ElectricComponent | 电气元器件类型枚举 | 统一表示各类电气元器件，如断路器、隔离开关等 |
+| Breaker | 断路器参数 | 定义断路器的详细参数，包含类型、型号、电流等信息 |
+| Isolator | 隔离开关参数 | 定义隔离开关的详细参数，包含型号、电流、极数等信息 |
+| DualPowerSwitch | 双电源开关参数 | 定义双电源开关的详细参数，包含型号、切换时间等信息 |
+| Contactor | 接触器参数 | 定义接触器的详细参数，包含型号、控制电压等信息 |
+| EnergyMeter | 电能表参数 | 定义电能表的详细参数，包含型号、精度等级等信息 |
+| CableInfo | 线缆参数 | 定义线缆的详细参数，包含型号、规格、敷设方式等信息 |
+| CircuitData | 回路数据复合类型 | 定义配电回路的完整数据结构，包含回路信息、元器件列表、电气参数等 |
+| DistributionBoxData | 配电箱数据复合类型 | 定义配电箱的完整数据结构，包含基本信息、回路集合、三相负载分布等 |
+| ElectricValueType | 电气值类型枚举 | 统一表示系统中各类电气参数值，支持数值、字符串、复合类型等 |
 
-```rust
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+### 2.2 设计数据结构定义（DataStructure）
 
-// 配电回路数据结构
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-struct CircuitInfo {
-    pub id: String,
-    pub name: String,
-    pub power: f64,           // 功率(kW)
-    pub power_factor: f64,    // 功率因数
-    pub coefficient: f64,     // 需用系数
-    pub current: f64,         // 计算电流(A)
-    pub phase: String,        // 相别 (A/B/C)
-    pub protection_device: String,  // 保护设备型号
-    pub cable_type: String,   // 线缆型号
-}
+在电气配电系统中，我们需要定义与电气参数对应的具体值类型，包括电流、功率等基本参数，以及更复杂的配电回路和配电箱数据。
 
-// 配电箱数据结构
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-struct DistributionBoxInfo {
-    pub id: String,
-    pub name: String,
-    pub incoming_power: f64,  // 进线功率(kW)
-    pub incoming_current: f64, // 进线电流(A)
-    pub total_circuits: usize,// 回路总数
-    pub phase_balance: PhaseBalanceInfo, // 三相平衡信息
-    pub main_protection: String, // 主保护设备
-    pub monitoring_module: String, // 监测模块
-}
+详细的数据结构定义请参考《数据结构定义方案》文档，该文档包含了完整的电气配电系统数据结构设计，包括：
 
-// 三相平衡信息
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-struct PhaseBalanceInfo {
-    pub phase_a_power: f64,   // A相功率
-    pub phase_b_power: f64,   // B相功率
-    pub phase_c_power: f64,   // C相功率
-    pub balance_degree: f64,  // 不平衡度
-}
+1. 基础数据类型：功率、电流、相序、回路编号等基本参数
+2. 配电回路数据结构：包含自动计算电流、智能选型、回路用途识别等功能的数据模型
+3. 配电箱数据结构：包含配电回路接口、保护设备、监测模块、三相平衡算法等功能的数据模型
+4. 干线系统图数据结构：自动映射、智能识别与连线生成等功能的数据模型
 
-// 定义电气系统参数值类型
-#[derive(Debug, Clone, PartialEq)]
-enum ElectricValueType {
-    Float(f64),              // 用于电流、功率等数值
-    Integer(i64),            // 用于整数标识
-    String(String),          // 用于型号、名称等文本
-    CircuitData(CircuitInfo), // 配电回路数据
-    DistributionBoxData(DistributionBoxInfo), // 配电箱数据
-    ThreePhaseData(PhaseBalanceInfo), // 三相数据
-}
+这些数据结构支持动态连接、双向数据流和自动更新功能，确保整个配电系统设计的数据一致性和实时性。
 
-// 如果需要序列化支持，添加相应实现
-// 序列化：将内存中的数据结构转换为可存储或传输的格式（如JSON字符串）
-// 反序列化：将存储或传输的格式转换回内存中的数据结构
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
+5. 完整数据结构列表：
 
-impl Serialize for MyAppValueType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use serde::ser::SerializeMap;
-
-        // 创建一个包含类型和值的映射
-        let mut map = serializer.serialize_map(Some(2))?;
-
-        match self {
-            MyAppValueType::Float(val) => {
-                map.serialize_entry("type", "float")?;
-                map.serialize_entry("value", val)?;
-            }
-            MyAppValueType::Integer(val) => {
-                map.serialize_entry("type", "integer")?;
-                map.serialize_entry("value", val)?;
-            }
-            MyAppValueType::Boolean(val) => {
-                map.serialize_entry("type", "boolean")?;
-                map.serialize_entry("value", val)?;
-            }
-            MyAppValueType::Vector2(val) => {
-                map.serialize_entry("type", "vector2")?;
-                map.serialize_entry("value", &[val.x, val.y])?;
-            }
-            MyAppValueType::Vector3(val) => {
-                map.serialize_entry("type", "vector3")?;
-                map.serialize_entry("value", &[val.x, val.y, val.z])?;
-            }
-            MyAppValueType::Color(val) => {
-                map.serialize_entry("type", "color")?;
-                map.serialize_entry("value", &[val.r(), val.g(), val.b(), val.a()])?;
-            }
-            MyAppValueType::String(val) => {
-                map.serialize_entry("type", "string")?;
-                map.serialize_entry("value", val)?;
-            }
-        }
-
-        map.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for MyAppValueType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        use serde::de::{self, MapAccess, Visitor};
-        use std::fmt;
-
-        #[derive(Deserialize)]
-        #[serde(field_identifier, rename_all = "lowercase")]
-        enum Field {
-            Type,
-            Value,
-        }
-
-        struct MyAppValueTypeVisitor;
-
-        impl<'de> Visitor<'de> for MyAppValueTypeVisitor {
-            type Value = MyAppValueType;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("struct MyAppValueType")
-            }
-
-            fn visit_map<V>(self, mut map: V) -> Result<MyAppValueType, V::Error>
-            where
-                V: MapAccess<'de>,
-            {
-                let mut value_type = None;
-                let mut value = None;
-
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        Field::Type => {
-                            if value_type.is_some() {
-                                return Err(de::Error::duplicate_field("type"));
-                            }
-                            value_type = Some(map.next_value::<String>()?);
-                        }
-                        Field::Value => {
-                            if value.is_some() {
-                                return Err(de::Error::duplicate_field("value"));
-                            }
-                            value = Some(map.next_value::<serde_json::Value>()?);
-                        }
-                    }
-                }
-
-                let value_type = value_type.ok_or_else(|| de::Error::missing_field("type"))?;
-                let value = value.ok_or_else(|| de::Error::missing_field("value"))?;
-
-                match value_type.as_str() {
-                    "float" => {
-                        let val = value.as_f64()
-                            .ok_or_else(|| de::Error::custom("invalid float value"))?;
-                        Ok(MyAppValueType::Float(val))
-                    }
-                    "integer" => {
-                        let val = value.as_i64()
-                            .ok_or_else(|| de::Error::custom("invalid integer value"))?;
-                        Ok(MyAppValueType::Integer(val))
-                    }
-                    "boolean" => {
-                        let val = value.as_bool()
-                            .ok_or_else(|| de::Error::custom("invalid boolean value"))?;
-                        Ok(MyAppValueType::Boolean(val))
-                    }
-                    "vector2" => {
-                        let arr = value.as_array()
-                            .ok_or_else(|| de::Error::custom("invalid vector2 value"))?;
-                        if arr.len() != 2 {
-                            return Err(de::Error::custom("vector2 must have 2 components"));
-                        }
-                        let x = arr[0].as_f64().ok_or_else(|| de::Error::custom("invalid x"))? as f32;
-                        let y = arr[1].as_f64().ok_or_else(|| de::Error::custom("invalid y"))? as f32;
-                        Ok(MyAppValueType::Vector2(egui::Vec2::new(x, y)))
-                    }
-                    "vector3" => {
-                        let arr = value.as_array()
-                            .ok_or_else(|| de::Error::custom("invalid vector3 value"))?;
-                        if arr.len() != 3 {
-                            return Err(de::Error::custom("vector3 must have 3 components"));
-                        }
-                        let x = arr[0].as_f64().ok_or_else(|| de::Error::custom("invalid x"))? as f32;
-                        let y = arr[1].as_f64().ok_or_else(|| de::Error::custom("invalid y"))? as f32;
-                        let z = arr[2].as_f64().ok_or_else(|| de::Error::custom("invalid z"))? as f32;
-                        Ok(MyAppValueType::Vector3(egui::Vec3::new(x, y, z)))
-                    }
-                    "color" => {
-                        let arr = value.as_array()
-                            .ok_or_else(|| de::Error::custom("invalid color value"))?;
-                        if arr.len() != 4 {
-                            return Err(de::Error::custom("color must have 4 components"));
-                        }
-                        let r = arr[0].as_u64().ok_or_else(|| de::Error::custom("invalid r"))? as u8;
-                        let g = arr[1].as_u64().ok_or_else(|| de::Error::custom("invalid g"))? as u8;
-                        let b = arr[2].as_u64().ok_or_else(|| de::Error::custom("invalid b"))? as u8;
-                        let a = arr[3].as_u64().ok_or_else(|| de::Error::custom("invalid a"))? as u8;
-                        Ok(MyAppValueType::Color(egui::Color32::from_rgba_premultiplied(r, g, b, a)))
-                    }
-                    "string" => {
-                        let val = value.as_str()
-                            .ok_or_else(|| de::Error::custom("invalid string value"))?;
-                        Ok(MyAppValueType::String(val.to_string()))
-                    }
-                    _ => Err(de::Error::unknown_variant(&value_type, &["float", "integer", "boolean", "vector2", "vector3", "color", "string"])),
-                }
-            }
-        }
-
-        const FIELDS: &[&str] = &["type", "value"];
-        deserializer.deserialize_struct("MyAppValueType", FIELDS, MyAppValueTypeVisitor)
-    }
-}
-```
+| 数据结构名称 | 中文名称 | 简要描述 |
+|------------|---------|--------|
+| CircuitNumber | 回路编号类型 | 支持字母+数字、双字母+数字、配电箱编号+'-'+数字三种形式的回路编号 |
+| CircuitPurpose | 回路用途 | 支持手动输入或从外部参数获取的回路用途定义 |
+| CircuitPower | 回路功率 | 支持手动输入或从外部配电箱参数获取的功率定义 |
+| VoltageLevel | 电压等级 | 定义系统电压等级，如400V/750V、0.6V/1kV等 |
+| PhaseSequence | 相序 | 定义电路相序，如L1、L2、L3、L1L2L3等 |
+| PhaseLine | 相线截面积规格 | 定义相线的截面积规格，如1.5mm²、2.5mm²等 |
+| PE | PE线截面积规格 | 定义PE线的截面积规格 |
+| TwinParallelCables | 双根并联电缆 | 定义双根并联电缆的规格 |
+| CoresNum | 电缆芯数与配置 | 定义电缆的芯数和配置，如2芯+PE、4芯等 |
+| DistributionBoxData | 配电箱数据结构 | 包含配电箱的基本信息、回路连接、功率电流计算、三相平衡等功能 |
+| MonitoringModule | 监测模块 | 定义配电箱监测模块的功能配置，如电压、电流、功率监测等 |
+| PhaseBalance | 三相平衡信息 | 记录三相平衡的详细数据，包括各相功率、电流和不平衡度 |
+| Dimensions | 箱体尺寸 | 定义配电箱的物理尺寸，包括宽度、高度和深度 |
+| TrunkSystemData | 干线系统数据结构 | 定义整个配电干线系统，包含配电箱、连接关系和拓扑分析功能 |
+| Connection | 连接关系 | 定义设备间的连接信息，包括源设备、目标设备、线缆规格等 |
+| SystemType | 系统类型 | 定义配电系统的类型，如放射式、树干式、环式、混合式等 |
+| ConnectionType | 连接类型 | 定义连接的类型，如一次侧、二次侧、母线连接、馈线连接等 |
+| LoadCategory | 负载分类 | 定义负载的分类信息，包括名称、描述、总功率和负载等级 |
+| LoadLevel | 负载等级 | 定义负载的重要性等级，如一级负荷、二级负荷、三级负荷 |
+| SystemTopology | 系统拓扑 | 描述配电系统的拓扑结构，包括根节点、叶节点和分支信息 |
+| Branch | 分支信息 | 记录系统拓扑中的分支连接信息 |
+| TopologyAnalysisResult | 拓扑分析结果 | 包含拓扑分析的详细结果，如配电箱数量、连接数量、根节点等 |
+| DataManager | 数据管理器 | 管理整个系统的数据，包括回路、配电箱和干线系统，提供数据一致性维护 |
+| DataChangeType | 数据变更类型 | 定义数据变更的类型，如添加、更新、删除等操作类型 |
+| DataChange | 数据变更记录 | 记录数据变更的详细信息，包括变更类型、实体ID、时间戳等 |
 
 ### 2.3 实现参数控件（WidgetValueTrait）
 
@@ -3445,7 +3297,6 @@ chrono = { version = "0.4.24", features = ["serde"] }
 
 通过遵循本指南，您可以构建一个功能完善、性能优良的电气节点图应用，满足建筑电气配电系统设计的需求。
 
-```
 
 ## 9. 总结
 
@@ -3476,33 +3327,26 @@ egui_node_graph库提供了灵活的基础架构，通过实现各种trait和自
 
 当你基于本指南实现自己的系统时，建议从简单的节点类型开始，逐步添加功能和复杂性，并根据实际项目需求进行优化和调整。
 
-- 1.
-核心数据类型定义 ：
-
+- 1.核心数据类型定义 ：
 - 定义了完整的ElectricDataType枚举，包含电流、功率、电压等电气参数类型
 - 实现了ElectricValueType值类型和ElectricNodeData节点数据结构
 - 添加了CircuitNodeData、DistributionBoxNodeData等节点专用数据结构
-- 2.
-节点模板实现 ：
 
+- 2.节点模板实现 ：
 - 将通用MyAppNodeTemplate替换为电气系统专用ElectricNodeTemplate
 - 实现了CategoryTrait和NodeTemplateTrait的电气系统专用版本
 - 配置了配电回路、配电箱、干线系统图、电源和计算节点的参数
-- 3.
-应用结构优化 ：
 
+- 3.应用结构优化 ：
 - 将MyNodeGraphApp重命名为ElectricNodeGraphApp，更新为电气系统专用类型
 - 实现了App trait的专用版本，包括项目信息显示、分类节点菜单
 - 添加了电气系统连接规则检查、自定义节点UI渲染和计算报告功能
-- 4.
-辅助功能增强 ：
 
+- 4.辅助功能增强 ：
 - 添加了电流计算、三相平衡度计算等电气专用计算函数
 - 实现了项目数据结构和报告生成器
 - 添加了必要的导入语句和依赖管理
-- 5.
-文档格式修复 ：
 
+- 5.文档格式修复 ：
 - 修复了文档末尾的多余引号
 - 确保了代码块和格式的一致性
-```
