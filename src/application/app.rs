@@ -1,6 +1,6 @@
-/// 应用主逻辑模块
-use eframe::{egui, App};
 use crate::application::AppState;
+/// 应用主逻辑模块
+use eframe::{App, egui};
 use serde_json;
 use std::sync::Arc;
 
@@ -15,21 +15,22 @@ impl PDSDApp {
     pub fn new() -> Self {
         // 创建新的应用状态
         let state = AppState::new();
-        
+
         // 将state包装在Arc中
         let state_arc = Arc::new(state);
-        
-        Self {
-            state: state_arc,
-        }
+
+        Self { state: state_arc }
+    }
+}
+
+impl Default for PDSDApp {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl App for PDSDApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        // 设置窗口标题
-        frame.set_window_title("电力配电系统设计软件 (PDSD)");
-        
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // 简单的UI渲染
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("电力配电系统设计软件 (PDSD)");
@@ -37,7 +38,7 @@ impl App for PDSDApp {
             ui.label("应用程序正在开发中...");
         });
     }
-    
+
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         // 保存应用状态到存储
         if let Ok(nodes) = self.state.nodes.lock() {
@@ -45,14 +46,14 @@ impl App for PDSDApp {
                 storage.set_string("nodes", json);
             }
         }
-        
+
         // 保存项目信息
         if let Ok(project_info) = self.state.project_info.lock() {
             if let Ok(json) = serde_json::to_string(&*project_info) {
                 storage.set_string("project_info", json);
             }
         }
-        
+
         // 保存应用配置
         if let Ok(config) = self.state.config.lock() {
             if let Ok(json) = serde_json::to_string(&*config) {

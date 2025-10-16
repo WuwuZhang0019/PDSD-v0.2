@@ -1,6 +1,6 @@
+use serde::{Deserialize, Serialize};
 /// 应用状态管理模块
 use std::sync::{Arc, Mutex};
-use serde::{Serialize, Deserialize};
 
 /// 应用程序的全局状态
 #[derive(Clone)]
@@ -18,6 +18,12 @@ pub struct AppState {
 impl AppState {
     /// 创建新的应用状态实例
     pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for AppState {
+    fn default() -> Self {
         Self {
             project_info: Arc::new(Mutex::new(ProjectInfo::default())),
             nodes: Arc::new(Mutex::new(Vec::new())),
@@ -58,20 +64,15 @@ pub struct AppConfig {
 }
 
 /// UI主题
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Theme {
     /// 浅色主题
+    #[default]
     Light,
     /// 深色主题
     Dark,
     /// 跟随系统
     System,
-}
-
-impl Default for Theme {
-    fn default() -> Self {
-        Theme::Light
-    }
 }
 
 /// 计算结果
