@@ -246,6 +246,15 @@ impl ErrorHandler for PdsdErrorHandler {
                     )
                 }
             },
+            PdsdError::NodeGraph(node_graph_error) => {
+                // 处理节点图库错误
+                UiErrorMessage::error(
+                    "节点图错误",
+                    node_graph_error.to_string(),
+                    None::<&str>,
+                    Some("NODE-GRAPH"),
+                )
+            },
             PdsdError::Editor(editor_error) => {
                 // 处理编辑器错误
                 match editor_error {
@@ -407,11 +416,24 @@ impl ErrorHandler for PdsdErrorHandler {
     }
     
     fn log_error(&self, error: &PdsdError, context: Option<&str>) {
-        // 在实际应用中，这里会集成日志系统
-        // 目前只是简单打印到控制台
-        eprintln!("[ERROR] {}", error);
-        if let Some(ctx) = context {
-            eprintln!("[CONTEXT] {}", ctx);
+        match error {
+            PdsdError::Core(core_error) => {
+                let context_str = context.unwrap_or("核心库");
+                println!("[错误] [{}] {}", context_str, core_error);
+                // 在实际应用中，这里应该使用适当的日志记录库
+            },
+            PdsdError::NodeGraph(node_graph_error) => {
+                let context_str = context.unwrap_or("节点图库");
+                println!("[错误] [{}] {}", context_str, node_graph_error);
+                // 在实际应用中，这里应该使用适当的日志记录库
+            },
+            _ => {
+                // 处理其他类型的错误
+                eprintln!("[ERROR] {}", error);
+                if let Some(ctx) = context {
+                    eprintln!("[CONTEXT] {}", ctx);
+                }
+            }
         }
     }
 }
@@ -461,6 +483,7 @@ impl PDSDApp {
 mod tests {
     use super::*;
     use crate::error::CoreError;
+    use egui_node_graph::{EguiGraphError, NodeId};
     
     #[test]
     fn test_error_handling() {
@@ -475,6 +498,23 @@ mod tests {
         assert_eq!(ui_error.message, "电流计算溢出");
         assert!(ui_error.context.is_some());
         assert_eq!(ui_error.code, Some("CORE-CALC"));
+        assert_eq!(ui_error.level, ErrorLevel::Error);
+    }
+    
+    #[test]
+    fn test_node_graph_error_handling() {
+        let error_handler = PdsdErrorHandler;
+        
+        // 测试节点图库错误处理
+        let node_id = NodeId::default();
+        let node_graph_error = EguiGraphError::NoParameterNamed(node_id, "test_param".to_string());
+        let pdsd_error = PdsdError::from(node_graph_error);
+        let ui_error = error_handler.handle_error(&pdsd_error);
+        
+        assert_eq!(ui_error.title, "节点图错误");
+        assert!(ui_error.message.contains("节点"));
+        assert!(ui_error.message.contains("test_param"));
+        assert_eq!(ui_error.code, Some("NODE-GRAPH"));
         assert_eq!(ui_error.level, ErrorLevel::Error);
     }
     

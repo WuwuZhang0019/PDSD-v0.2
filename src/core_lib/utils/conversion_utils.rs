@@ -182,7 +182,7 @@ impl ConversionUtils {
     /// - value: 数值
     /// - decimals: 小数位数
     pub fn format_number(value: f64, decimals: usize) -> String {
-        format!("{{:.{}f}}", decimals, value)
+        format!("{:.precision$}", value, precision = decimals)
     }
     
     /// 格式化大数值显示（添加千位分隔符）
@@ -193,7 +193,7 @@ impl ConversionUtils {
             format!("{:.2e}", value)
         } else {
             // 对于一般数值，添加千位分隔符
-            let s = format!("{:.2f}", value);
+            let s = format!("{:.2}", value);
             let parts: Vec<&str> = s.split('.').collect();
             let mut integer_part = parts[0].to_string();
             

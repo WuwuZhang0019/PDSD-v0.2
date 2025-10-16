@@ -1,5 +1,5 @@
 use crate::core_lib::data_types::{ElectricDataType, ElectricNodeData, ElectricValueType};
-use egui_node_graph::{DataTypeTrait, Graph, NodeDataTrait, NodeId, OutputId, InputId, ValueTypeTrait, NodeResponse};
+use egui_node_graph::{DataTypeTrait, Graph, NodeDataTrait, NodeId, OutputId, InputId, NodeResponse};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -42,13 +42,9 @@ impl Clone for PowerGraphNode {
     }
 }
 
-impl NodeDataTrait for PowerGraphNode {
-    type Response = (); // 简单的响应类型
-    type UserState = (); // 简单的用户状态类型
-    type DataType = ElectricDataType;
-    type ValueType = ElectricValueType;
-
-    fn output_values(&self) -> HashMap<OutputId, ElectricValueType> {
+impl PowerGraphNode {
+    /// 获取节点的输出值
+    pub fn output_values(&self) -> HashMap<OutputId, ElectricValueType> {
         let mut values = HashMap::new();
 
         match &self.data {
@@ -87,19 +83,8 @@ impl NodeDataTrait for PowerGraphNode {
         values
     }
 
-    // 必需实现的bottom_ui方法
-    fn bottom_ui(
-        &self,
-        _ui: &mut egui::Ui,
-        _node_id: NodeId,
-        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
-        _user_state: &mut Self::UserState,
-    ) -> Vec<NodeResponse<Self::Response, Self>> {
-        Default::default() // 返回空向量
-    }
-
-    // 处理方法
-    fn process(&mut self, inputs: HashMap<InputId, ElectricValueType>) -> HashMap<OutputId, ElectricValueType> {
+    /// 处理输入数据并更新节点状态
+    pub fn process(&mut self, inputs: HashMap<InputId, ElectricValueType>) -> HashMap<OutputId, ElectricValueType> {
         // 处理输入数据并更新节点状态
         match &mut self.data {
             ElectricNodeData::DistributionBoxNode(box_data) => {
@@ -147,6 +132,24 @@ impl NodeDataTrait for PowerGraphNode {
 
         // 返回处理后的输出值
         self.output_values()
+    }
+}
+
+impl NodeDataTrait for PowerGraphNode {
+    type Response = (); // 简单的响应类型
+    type UserState = (); // 简单的用户状态类型
+    type DataType = ElectricDataType;
+    type ValueType = ElectricValueType;
+
+    // 必需实现的bottom_ui方法
+    fn bottom_ui(
+        &self,
+        _ui: &mut egui::Ui,
+        _node_id: NodeId,
+        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
+        _user_state: &mut Self::UserState,
+    ) -> Vec<NodeResponse<Self::Response, Self>> {
+        Default::default() // 返回空向量
     }
 }
 

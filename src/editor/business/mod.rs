@@ -21,7 +21,7 @@ pub use circuit_node::{CircuitNode, CircuitNodeTemplate, CircuitNodeResponse, Ed
 pub use distribution_box_parameters::{DistributionBoxNode as BoxData, CircuitInfo, DistributionBoxError, DistributionBoxResponse};
 pub use circuit_manager::CircuitManager;
 pub use distribution_box_calculator::DistributionBoxCalculator;
-pub use distribution_box_node::DistributionBoxNode;
+pub use distribution_box_node::DistributionBoxNodeUI;
 pub use distribution_box_template::DistributionBoxTemplate;
 pub use node_data_transfer::{PowerGraphNode, PowerGraphState};
 

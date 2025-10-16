@@ -5,11 +5,12 @@ use crate::editor::business::{CircuitNodeTemplate, DistributionBoxTemplate};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex}; 
 
-/// 电力配电系统图编辑器状态 pub struct PowerDistributionGraphEditorState {
+/// 电力配电系统图编辑器状态
+pub struct PowerDistributionGraphEditorState {
     /// 节点图数据
     pub graph: Graph<PowerGraphNode, ElectricDataType, ElectricValueType>,
     /// 节点编辑器UI状态
-    pub editor_state: GraphEditorState,
+    pub editor_state: GraphEditorState<PowerGraphNode, ElectricDataType, ElectricValueType, CircuitNodeTemplate, PowerGraphState>,
     /// 电力图专用状态
     pub power_graph_state: PowerGraphState,
     /// 节点模板集合

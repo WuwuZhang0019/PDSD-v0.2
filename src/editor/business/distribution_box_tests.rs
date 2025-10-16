@@ -2,7 +2,7 @@
 //! 
 //! 本文件包含对配电箱相关功能的全面单元测试
 
-use crate::editor::business::{BoxData, CircuitInfo, CircuitManager, DistributionBoxCalculator, DistributionBoxNode, DistributionBoxTemplate};
+use crate::editor::business::{BoxData, CircuitInfo, CircuitManager, DistributionBoxCalculator, DistributionBoxNodeUI, DistributionBoxTemplate};
 use crate::editor::business::{DistributionBoxError};
 
 #[test]
@@ -185,7 +185,7 @@ fn test_three_phase_balancing() {
 #[test]
 fn test_distribution_box_node_recalculation() {
     // 测试配电箱节点的完整计算流程
-    let mut box_node = DistributionBoxNode::default();
+    let mut box_node = DistributionBoxNodeUI::default();
     
     // 添加多个回路
     let circuits = vec![
@@ -269,7 +269,7 @@ fn test_distribution_box_template() {
 #[test]
 fn test_edge_cases() {
     // 测试边界情况
-    let mut box_node = DistributionBoxNode::default();
+    let mut box_node = DistributionBoxNodeUI::default();
     
     // 1. 空配电箱计算
     box_node.recalculate();

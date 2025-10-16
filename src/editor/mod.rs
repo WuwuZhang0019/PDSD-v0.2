@@ -1,4 +1,8 @@
 /// 编辑器模块
+pub mod business;
+pub mod graph;
+pub mod ui;
+
 use eframe::egui;
 use crate::application::AppState;
 use crate::editor::ui::{NodeEditor, PropertyPanel, Toolbar, StatusBar};

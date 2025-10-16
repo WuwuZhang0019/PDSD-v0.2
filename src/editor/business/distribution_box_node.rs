@@ -11,14 +11,14 @@ use egui_node_graph::{Graph, NodeId, NodeResponse};
 use egui_node_graph::traits::{NodeDataTrait, UserResponseTrait, NodeTemplateTrait};
 
 use crate::core_lib::data_types::{ElectricDataType, ElectricValueType};
-use crate::editor::business::{DistributionBoxNode as BoxData, CircuitInfo, DistributionBoxError, DistributionBoxResponse};
+use crate::editor::business::{BoxData, CircuitInfo, DistributionBoxError, DistributionBoxResponse};
 use crate::editor::business::{CircuitManager, DistributionBoxCalculator, EditorState};
 
 /// 配电箱节点UI实现
 /// 
-/// 包装了DistributionBoxNode数据，实现了NodeDataTrait接口，提供UI交互功能
+/// 包装了DistributionBoxNodeUI数据，实现了NodeDataTrait接口，提供UI交互功能
 #[derive(Debug, Clone)]
-pub struct DistributionBoxNode {
+pub struct DistributionBoxNodeUI {
     /// 节点ID
     pub id: String,
     /// 配电箱数据
@@ -27,7 +27,7 @@ pub struct DistributionBoxNode {
     pub errors: Vec<String>,
 }
 
-impl Default for DistributionBoxNode {
+impl Default for DistributionBoxNodeUI {
     fn default() -> Self {
         Self {
             id: format!("distribution_box_{:x}", rand::random::<u32>()),
@@ -37,7 +37,7 @@ impl Default for DistributionBoxNode {
     }
 }
 
-impl DistributionBoxNode {
+impl DistributionBoxNodeUI {
     /// 创建新的配电箱节点
     /// 
     /// # 参数
@@ -218,7 +218,7 @@ impl DistributionBoxNode {
 }
 
 // 实现NodeDataTrait接口
-impl NodeDataTrait for DistributionBoxNode {
+impl NodeDataTrait for DistributionBoxNodeUI {
     type Response = DistributionBoxResponse;
     type UserState = EditorState;
     type DataType = ElectricDataType;
@@ -358,76 +358,6 @@ impl NodeDataTrait for DistributionBoxNode {
         Some(Color32::from_rgb(200, 150, 100)) // 棕色系表示配电箱节点
     }
     
-    /// 参数更新处理
-    fn update_params(
-        &mut self,
-        params: Self::ValueType,
-        _user_state: &mut Self::UserState,
-    ) -> Result<(), Self::DataType> {
-        match params {
-            ElectricValueType::String(value) => {
-                // 假设字符串参数是名称
-                self.update_name(value);
-            },
-            ElectricValueType::Float(value) => {
-                // 假设浮点参数是楼层号（向上取整）
-                self.update_floor(value.ceil() as u32);
-            },
-            _ => {},
-        }
-        
-        Ok(())
-    }
-    
-    /// 输入数据处理
-    fn input_data(
-        &mut self,
-        input_idx: usize,
-        data: &Self::DataType,
-        _user_state: &mut Self::UserState,
-    ) -> Result<(), Self::DataType> {
-        // 处理来自回路节点的输入数据
-        if let ElectricDataType::CircuitData = data {
-            // 这里简化处理，实际应该根据data的内容创建CircuitInfo
-            // 并添加到配电箱中
-            // 例如：
-            // let circuit_info = CircuitInfo::new(...);
-            // self.add_circuit(circuit_info);
-        }
-        
-        Ok(())
-    }
-    
-    /// 输出数据获取
-    fn output_data(
-        &self,
-        output_idx: usize,
-        _user_state: &mut Self::UserState,
-    ) -> Result<Self::DataType, Self::DataType> {
-        match output_idx {
-            0 => {
-                // 输出配电箱数据
-                Ok(ElectricDataType::DistributionBoxData(self.to_data_map()))
-            },
-            1 => {
-                // 输出总电流
-                Ok(ElectricDataType::Current(self.data.total_current))
-            },
-            2 => {
-                // 输出总功率
-                Ok(ElectricDataType::Power(self.data.total_power))
-            },
-            3 => {
-                // 输出进线电流（保护设备电流整定值）
-                Ok(ElectricDataType::Current(self.data.incoming_current))
-            },
-            _ => {
-                // ElectricDataType没有Error成员，这里使用String作为错误指示
-                Err(ElectricDataType::String("无效的输出端口索引".to_string()))
-            }
-        }
-    }
-    
     /// 输出UI
     fn output_ui(
         &self,
@@ -465,12 +395,16 @@ impl NodeDataTrait for DistributionBoxNode {
 }
 
 // 实现UserResponseTrait接口
-impl UserResponseTrait for DistributionBoxResponse {
-    fn apply<NodeData: NodeDataTrait<Response = Self>>(
+impl UserResponseTrait for DistributionBoxResponse {}
+
+// 为DistributionBoxResponse实现apply方法（不是trait的一部分）
+impl DistributionBoxResponse {
+    /// 应用响应到节点图
+    pub fn apply(
         self,
         node_id: NodeId,
-        graph: &mut Graph<NodeData, NodeData::DataType, NodeData::ValueType>,
-        user_state: &mut NodeData::UserState,
+        graph: &mut Graph<DistributionBoxNodeUI, ElectricDataType, ElectricValueType>,
+        user_state: &mut EditorState,
     ) {
         match self {
             DistributionBoxResponse::NodeUpdated => {
@@ -482,25 +416,19 @@ impl UserResponseTrait for DistributionBoxResponse {
             DistributionBoxResponse::CircuitAdded(circuit) => {
                 // 添加回路
                 if let Some(node) = graph.nodes.get_mut(node_id) {
-                    if let Some(box_node) = node.user_data.as_any().downcast_mut::<DistributionBoxNode>() {
-                        box_node.add_circuit(circuit);
-                    }
+                    node.user_data.add_circuit(circuit);
                 }
             },
             DistributionBoxResponse::CircuitRemoved(circuit_id) => {
                 // 移除回路
                 if let Some(node) = graph.nodes.get_mut(node_id) {
-                    if let Some(box_node) = node.user_data.as_any().downcast_mut::<DistributionBoxNode>() {
-                        box_node.remove_circuit(&circuit_id);
-                    }
+                    node.user_data.remove_circuit(&circuit_id);
                 }
             },
             DistributionBoxResponse::CircuitUpdated(circuit) => {
                 // 更新回路
                 if let Some(node) = graph.nodes.get_mut(node_id) {
-                    if let Some(box_node) = node.user_data.as_any().downcast_mut::<DistributionBoxNode>() {
-                        box_node.update_circuit(circuit);
-                    }
+                    node.user_data.update_circuit(circuit);
                 }
             },
             DistributionBoxResponse::CalculationCompleted => {
@@ -509,19 +437,82 @@ impl UserResponseTrait for DistributionBoxResponse {
             DistributionBoxResponse::Error(err) => {
                 // 错误处理
                 if let Some(node) = graph.nodes.get_mut(node_id) {
-                    if let Some(box_node) = node.user_data.as_any().downcast_mut::<DistributionBoxNode>() {
-                        box_node.errors.push(err.to_string());
-                    }
+                    node.user_data.errors.push(err.to_string());
                 }
             },
         }
     }
 }
 
-// 为DistributionBoxNode实现Any trait
-impl std::any::Any for DistributionBoxNode {
-    fn type_id(&self) -> std::any::TypeId {
-        std::any::TypeId::of::<DistributionBoxNode>()
+impl DistributionBoxNodeUI {
+    /// 参数更新处理
+    pub fn update_params(
+        &mut self,
+        params: ElectricValueType,
+        _user_state: &mut EditorState,
+    ) -> Result<(), ElectricDataType> {
+        match params {
+            ElectricValueType::String(value) => {
+                // 假设字符串参数是名称
+                self.update_name(value);
+            },
+            ElectricValueType::Float(value) => {
+                // 假设浮点参数是楼层号（向上取整）
+                self.update_floor(value.ceil() as u32);
+            },
+            _ => {},
+        }
+        
+        Ok(())
+    }
+    
+    /// 输入数据处理
+    pub fn input_data(
+        &mut self,
+        input_idx: usize,
+        data: &ElectricDataType,
+        _user_state: &mut EditorState,
+    ) -> Result<(), ElectricDataType> {
+        // 处理来自回路节点的输入数据
+        if let ElectricDataType::CircuitData = data {
+            // 这里简化处理，实际应该根据data的内容创建CircuitInfo
+            // 并添加到配电箱中
+            // 例如：
+            // let circuit_info = CircuitInfo::new(...);
+            // self.add_circuit(circuit_info);
+        }
+        
+        Ok(())
+    }
+    
+    /// 输出数据获取
+    pub fn output_data(
+        &self,
+        output_idx: usize,
+        _user_state: &mut EditorState,
+    ) -> Result<ElectricDataType, ElectricDataType> {
+        match output_idx {
+            0 => {
+                // 输出配电箱数据
+                Ok(ElectricDataType::DistributionBoxData(self.to_data_map()))
+            },
+            1 => {
+                // 输出总电流
+                Ok(ElectricDataType::Current(self.data.total_current))
+            },
+            2 => {
+                // 输出总功率
+                Ok(ElectricDataType::Power(self.data.total_power))
+            },
+            3 => {
+                // 输出进线电流（保护设备电流整定值）
+                Ok(ElectricDataType::Current(self.data.incoming_current))
+            },
+            _ => {
+                // ElectricDataType没有Error成员，这里使用String作为错误指示
+                Err(ElectricDataType::String("无效的输出端口索引".to_string()))
+            }
+        }
     }
 }
 
@@ -532,7 +523,7 @@ mod tests {
     
     #[test]
     fn test_distribution_box_node_creation() {
-        let node = DistributionBoxNode::default();
+        let node = DistributionBoxNodeUI::default();
         assert_eq!(node.data.name, "新建配电箱");
         assert_eq!(node.data.floor, 1);
         assert_eq!(node.data.circuits.len(), 0);
@@ -544,7 +535,7 @@ mod tests {
     
     #[test]
     fn test_add_circuit() {
-        let mut node = DistributionBoxNode::default();
+        let mut node = DistributionBoxNodeUI::default();
         let circuit = CircuitInfo::new(
             "circuit_1".to_string(),
             "测试回路1".to_string(),
@@ -563,7 +554,7 @@ mod tests {
     
     #[test]
     fn test_update_name() {
-        let mut node = DistributionBoxNode::default();
+        let mut node = DistributionBoxNodeUI::default();
         node.update_name("测试配电箱".to_string());
         
         assert_eq!(node.data.name, "测试配电箱");
@@ -572,7 +563,7 @@ mod tests {
     
     #[test]
     fn test_recalculate() {
-        let mut node = DistributionBoxNode::default();
+        let mut node = DistributionBoxNodeUI::default();
         
         // 添加几个回路
         let circuit1 = CircuitInfo::new(

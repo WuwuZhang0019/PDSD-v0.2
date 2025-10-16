@@ -1,0 +1,16 @@
+[package]
+name = "egui_node_graph"
+version = "0.1.0"
+authors = ["PDSD Team"]
+description = "Node graph implementation for PDSD project"
+edition = "2021"
+
+[dependencies]
+slotmap = "1.0.7"
+smallvec = "1.11.2"
+egui = "0.32.3"
+thiserror = "1.0"
+
+[lib]
+name = "egui_node_graph"
+path = "lib.rs"

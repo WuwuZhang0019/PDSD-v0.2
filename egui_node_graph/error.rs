@@ -1,4 +1,4 @@
-use super::*;
+use super::id_type::{AnyParameterId, NodeId};
 
 #[derive(Debug, thiserror::Error)]
 pub enum EguiGraphError {

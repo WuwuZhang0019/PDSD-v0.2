@@ -221,26 +221,26 @@ impl NodeDataTrait for CircuitNode {
 }
 
 // 实现UserResponseTrait
-impl UserResponseTrait for CircuitNodeResponse {
-    fn apply<NodeData: NodeDataTrait<Response = Self>>(
+impl UserResponseTrait for CircuitNodeResponse {}
+
+// 为CircuitNodeResponse实现apply方法（不是trait的一部分）
+impl CircuitNodeResponse {
+    /// 应用响应到节点图
+    pub fn apply(
         self,
         node_id: NodeId,
-        graph: &mut Graph<NodeData, NodeData::DataType, NodeData::ValueType>,
-        user_state: &mut NodeData::UserState,
+        graph: &mut Graph<CircuitNode, ElectricDataType, ElectricValueType>,
+        user_state: &mut EditorState,
     ) {
         match self {
             CircuitNodeResponse::ParameterUpdated(params) => {
                 if let Some(node) = graph.nodes.get_mut(node_id) {
-                    if let Some(circuit_node) = node.user_data.as_any().downcast_mut::<CircuitNode>() {
-                        circuit_node.update_parameters(params);
-                    }
+                    node.user_data.update_parameters(params);
                 }
             },
             CircuitNodeResponse::CalculationTriggered => {
                 if let Some(node) = graph.nodes.get_mut(node_id) {
-                    if let Some(circuit_node) = node.user_data.as_any().downcast_mut::<CircuitNode>() {
-                        circuit_node.recalculate();
-                    }
+                    node.user_data.recalculate();
                 }
             },
             CircuitNodeResponse::Error(_) => {
@@ -265,21 +265,26 @@ impl NodeTemplateTrait for CircuitNodeTemplate {
     type NodeData = CircuitNode;
     type DataType = ElectricDataType;
     type ValueType = ElectricValueType;
-    type Category = &'static str;
+    type CategoryType = &'static str;
     type UserState = EditorState;
     
     /// 节点查找器标签
-    fn node_finder_label(&self) -> Cow<'static, str> {
+    fn node_finder_label(&self, _user_state: &mut Self::UserState) -> Cow<'static, str> {
         Cow::Borrowed("配电回路")
     }
     
+    /// 节点图标签
+    fn node_graph_label(&self, user_state: &mut Self::UserState) -> String {
+        self.node_finder_label(user_state).into_owned()
+    }
+    
     /// 节点查找器类别
-    fn node_finder_categories(&self) -> Vec<Self::Category> {
+    fn node_finder_categories(&self, _user_state: &mut Self::UserState) -> Vec<Self::CategoryType> {
         vec!["电气节点"]
     }
     
     /// 用户数据
-    fn user_data(&self) -> Self::NodeData {
+    fn user_data(&self, _user_state: &mut Self::UserState) -> Self::NodeData {
         CircuitNode::default()
     }
     
@@ -288,18 +293,20 @@ impl NodeTemplateTrait for CircuitNodeTemplate {
         &self,
         graph: &mut Graph<Self::NodeData, Self::DataType, Self::ValueType>,
         user_state: &mut Self::UserState,
-    ) -> NodeId {
-        // 创建新节点
-        let node_data = self.user_data();
+        node_id: NodeId,
+    ) {
+        // 创建新节点数据
+        let node_data = self.user_data(user_state);
         let node_label = node_data.get_title();
         
-        // 创建节点
-        let node_id = graph.add_node(node_data, &node_label);
+        // 设置节点数据
+        graph.nodes[node_id].user_data = node_data;
+        graph.nodes[node_id].label = node_label;
         
         // 添加输入参数
         graph.add_input_param(
             node_id,
-            "回路名称",
+            "回路名称".to_string(),
             ElectricDataType::String,
             ElectricValueType::String("新回路".to_string()),
             egui_node_graph::InputParamKind::ConstantOnly,
@@ -308,7 +315,7 @@ impl NodeTemplateTrait for CircuitNodeTemplate {
         
         graph.add_input_param(
             node_id,
-            "额定功率(kW)",
+            "额定功率(kW)".to_string(),
             ElectricDataType::Power,
             ElectricValueType::Float(1.0),
             egui_node_graph::InputParamKind::ConstantOnly,
@@ -317,7 +324,7 @@ impl NodeTemplateTrait for CircuitNodeTemplate {
         
         graph.add_input_param(
             node_id,
-            "需要系数",
+            "需要系数".to_string(),
             ElectricDataType::Coefficient,
             ElectricValueType::Float(0.8),
             egui_node_graph::InputParamKind::ConstantOnly,
@@ -326,7 +333,7 @@ impl NodeTemplateTrait for CircuitNodeTemplate {
         
         graph.add_input_param(
             node_id,
-            "功率因数",
+            "功率因数".to_string(),
             ElectricDataType::PowerFactor,
             ElectricValueType::Float(0.85),
             egui_node_graph::InputParamKind::ConstantOnly,
@@ -335,7 +342,7 @@ impl NodeTemplateTrait for CircuitNodeTemplate {
         
         graph.add_input_param(
             node_id,
-            "电压类型",
+            "电压类型".to_string(),
             ElectricDataType::String,
             ElectricValueType::String("单相".to_string()),
             egui_node_graph::InputParamKind::ConstantOnly,
@@ -345,24 +352,15 @@ impl NodeTemplateTrait for CircuitNodeTemplate {
         // 添加输出参数
         graph.add_output_param(
             node_id,
-            "计算电流",
+            "计算电流".to_string(),
             ElectricDataType::Current,
         );
         
         graph.add_output_param(
             node_id,
-            "回路数据",
+            "回路数据".to_string(),
             ElectricDataType::CircuitData,
         );
-        
-        node_id
-    }
-}
-
-// 为CircuitNode实现Any trait，用于在UserResponseTrait中进行类型转换
-impl std::any::Any for CircuitNode {
-    fn type_id(&self) -> std::any::TypeId {
-        std::any::TypeId::of::<CircuitNode>()
     }
 }
 

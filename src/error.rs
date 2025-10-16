@@ -22,6 +22,10 @@ pub enum PdsdError {
     #[error(transparent)]
     Export(#[from] ExportError),
     
+    /// 节点图库错误
+    #[error(transparent)]
+    NodeGraph(#[from] egui_node_graph::EguiGraphError),
+    
     /// 标准库I/O错误
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -144,6 +148,7 @@ pub fn unknown_error(msg: impl Into<String>) -> PdsdError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use egui_node_graph::{EguiGraphError, AnyParameterId, NodeId};
 
     #[test]
     fn test_error_creation() {
@@ -177,6 +182,12 @@ mod tests {
             message: "电流值必须大于0".to_string(),
         };
         assert_eq!(validation_error.to_string(), "验证错误: current: 电流值必须大于0".to_string());
+
+        // 测试节点图库错误转换
+        let node_id = NodeId::default();
+        let node_graph_error = EguiGraphError::NoParameterNamed(node_id, "test_param".to_string());
+        let pdsd_error: PdsdError = node_graph_error.into();
+        assert!(pdsd_error.to_string().contains("节点") && pdsd_error.to_string().contains("test_param"));
     }
 
     #[test]

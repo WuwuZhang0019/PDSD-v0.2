@@ -4,8 +4,8 @@ use crate::color_hex_utils::*;
 use crate::utils::ColorUtils;
 
 use super::*;
-use egui::epaint::{CubicBezierShape, RectShape};
-use egui::*;
+use egui::epaint::CubicBezierShape;
+use egui::{Area, Color32, Id, Key, Order, Painter, Pos2, Rect, Response, CornerRadius, Sense, Shape, Stroke, Vec2, Ui, Label, RichText, TextStyle, pos2, vec2, PointerButton};
 
 pub type PortLocations = std::collections::HashMap<AnyParameterId, Pos2>;
 pub type NodeRects = std::collections::HashMap<NodeId, Rect>;
@@ -157,7 +157,7 @@ where
             click_on_background = true;
         } else if r.drag_started() {
             drag_started_on_background = true;
-        } else if r.drag_released() {
+        } else if r.drag_delta().length() > 0.0 && !r.dragged() {
             drag_released_on_background = true;
         }
 
@@ -185,7 +185,7 @@ where
         /* 如果打开了节点查找器，则绘制它 */
         let mut should_close_node_finder = false;
         if let Some(ref mut node_finder) = self.node_finder {
-            let mut node_finder_area = Area::new("node_finder").order(Order::Foreground);
+            let mut node_finder_area = Area::new(Id::new("node_finder")).order(Order::Foreground);
             if let Some(pos) = node_finder.position {
                 node_finder_area = node_finder_area.current_pos(pos);
             }
@@ -382,6 +382,7 @@ where
                 2.0,
                 bg_color,
                 Stroke::new(3.0, stroke_color),
+                egui::epaint::StrokeKind::Outside,
             );
 
             self.selected_nodes = node_rects
@@ -482,11 +483,9 @@ where
         ui: &mut Ui,
         user_state: &mut UserState,
     ) -> Vec<NodeResponse<UserResponse, NodeData>> {
-        let mut child_ui = ui.child_ui_with_id_source(
-            Rect::from_min_size(*self.position + self.pan, Self::MAX_NODE_SIZE.into()),
-            Layout::default(),
-            self.node_id,
-        );
+        let mut child_ui = ui.new_child(egui::UiBuilder::new().max_rect(
+            Rect::from_min_size(*self.position + self.pan, Self::MAX_NODE_SIZE.into())
+        ));
 
         Self::show_graph_node(self, &mut child_ui, user_state)
     }
@@ -526,7 +525,7 @@ where
         inner_rect.max.x = inner_rect.max.x.max(inner_rect.min.x);
         inner_rect.max.y = inner_rect.max.y.max(inner_rect.min.y);
 
-        let mut child_ui = ui.child_ui(inner_rect, *ui.layout());
+        let mut child_ui = ui.new_child(egui::UiBuilder::new().max_rect(inner_rect));
 
         // Get interaction rect from memory, it may expand after the window response on resize.
         let interaction_rect = ui
@@ -793,52 +792,48 @@ where
         // 注意：这段代码比实际需要的更复杂，因为egui不支持绘制具有不对称圆角的矩形。
 
         let (shape, outline) = {
-            let rounding_radius = 4.0;
-            let rounding = Rounding::same(rounding_radius);
+            let rounding_radius = 4;
+        let corner_radius = CornerRadius::same(rounding_radius);
 
             let titlebar_height = title_height + margin.y;
             let titlebar_rect =
                 Rect::from_min_size(outer_rect.min, vec2(outer_rect.width(), titlebar_height));
-            let titlebar = Shape::Rect(RectShape {
-                rect: titlebar_rect,
-                rounding,
-                fill: self.graph[self.node_id]
+            let titlebar = Shape::rect_filled(
+                titlebar_rect,
+                corner_radius,
+                self.graph[self.node_id]
                     .user_data
                     .titlebar_color(ui, self.node_id, self.graph, user_state)
-                    .unwrap_or_else(|| background_color.lighten(0.8)),
-                stroke: Stroke::NONE,
-            });
+                    .unwrap_or_else(|| background_color.lighten(0.8))
+            );
 
             let body_rect = Rect::from_min_size(
-                outer_rect.min + vec2(0.0, titlebar_height - rounding_radius),
+                outer_rect.min + vec2(0.0, titlebar_height - rounding_radius as f32),
                 vec2(outer_rect.width(), outer_rect.height() - titlebar_height),
             );
-            let body = Shape::Rect(RectShape {
-                rect: body_rect,
-                rounding: Rounding::none(),
-                fill: background_color,
-                stroke: Stroke::NONE,
-            });
+            let body = Shape::rect_filled(
+                body_rect,
+                CornerRadius::same(0),
+                background_color
+            );
 
             let bottom_body_rect = Rect::from_min_size(
                 body_rect.min + vec2(0.0, body_rect.height() - titlebar_height * 0.5),
                 vec2(outer_rect.width(), titlebar_height),
             );
-            let bottom_body = Shape::Rect(RectShape {
-                rect: bottom_body_rect,
-                rounding,
-                fill: background_color,
-                stroke: Stroke::NONE,
-            });
+            let bottom_body = Shape::rect_filled(
+                bottom_body_rect,
+                corner_radius,
+                background_color
+            );
 
             let node_rect = titlebar_rect.union(body_rect).union(bottom_body_rect);
             let outline = if self.selected {
-                Shape::Rect(RectShape {
-                    rect: node_rect.expand(1.0),
-                    rounding,
-                    fill: Color32::WHITE.lighten(0.8),
-                    stroke: Stroke::NONE,
-                })
+                Shape::rect_filled(
+                        node_rect.expand(1.0),
+                        corner_radius,
+                        Color32::TRANSPARENT
+                    )
             } else {
                 Shape::Noop
             };

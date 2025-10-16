@@ -303,7 +303,7 @@ impl DistributionBoxCalculator {
     /// 
     /// # 返回值
     /// 返回平衡度（0-1之间的值）
-    fn calculate_balance_degree(phase_loads: &[f64; 3]) -> f64 {
+    pub fn calculate_balance_degree(phase_loads: &[f64; 3]) -> f64 {
         let total_load: f64 = phase_loads.iter().sum();
         
         // 如果总负载为0，则视为完全平衡

@@ -40,7 +40,8 @@ pub enum ApplicationError {
         /// 资源名称
         resource_name: String,
         /// 可选的详细错误
-        source: Option<String>,
+        #[source]
+        source: Option<Box<dyn std::error::Error + Send + Sync>>,
     },
     
     /// 命令执行错误
@@ -67,7 +68,7 @@ pub enum ApplicationError {
         /// 功能名称
         feature_name: String,
         /// 未实现原因
-        reason: Option<String>,
+        reason: String,
     },
     
     /// 权限错误
@@ -110,12 +111,12 @@ impl ApplicationError {
     pub fn resource_loading(
         resource_type: impl Into<String>,
         resource_name: impl Into<String>,
-        source: Option<impl Into<String>>
+        source: Option<impl std::error::Error + Send + Sync + 'static>
     ) -> Self {
         ApplicationError::ResourceLoading {
             resource_type: resource_type.into(),
             resource_name: resource_name.into(),
-            source: source.map(|s| s.into()),
+            source: source.map(|s| Box::new(s) as Box<dyn std::error::Error + Send + Sync>),
         }
     }
     
@@ -145,7 +146,9 @@ impl ApplicationError {
     ) -> Self {
         ApplicationError::NotImplemented {
             feature_name: feature_name.into(),
-            reason: reason.map(|r| r.into()),
+            reason: reason
+                .map(|r| r.into())
+                .unwrap_or_else(|| "无具体原因".to_string()),
         }
     }
     
@@ -189,7 +192,7 @@ mod tests {
         let error_with_source = ApplicationError::resource_loading(
             "图标", 
             "save.svg", 
-            Some("文件不存在")
+            Some(std::io::Error::new(std::io::ErrorKind::NotFound, "文件不存在"))
         );
         assert!(error_with_source.to_string().contains("资源加载错误: 图标 - save.svg"));
         
@@ -197,7 +200,7 @@ mod tests {
         let error_no_source = ApplicationError::resource_loading(
             "模板", 
             "default.json", 
-            None::<String>
+            None::<std::io::Error>
         );
         assert!(error_no_source.to_string().contains("资源加载错误: 模板 - default.json"));
     }

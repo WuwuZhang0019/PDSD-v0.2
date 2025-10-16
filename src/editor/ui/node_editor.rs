@@ -2,6 +2,7 @@
 use eframe::egui;
 use crate::application::AppState;
 use crate::editor::graph::PowerDistributionGraphEditorState;
+use crate::editor::business::{CircuitNodeTemplate, PowerGraphState};
 
 /// 节点编辑器响应信息
 pub struct NodeEditorResponse {
@@ -179,12 +180,15 @@ impl NodeEditor {
                 }
                 
                 // 使用egui_node_graph渲染节点图
-                egui_node_graph::draw_graph_editor(
-                    ui, 
-                    &mut graph_state.graph, 
-                    &mut graph_state.editor_state,
-                    self.zoom,
-                    &self.pan_offset,
+                // 注意：我们需要提供节点模板迭代器和用户状态
+                // 这里使用空的节点模板列表，实际应用中应该提供可用的模板
+                let empty_templates: Vec<CircuitNodeTemplate> = Vec::new();
+                let mut user_state = PowerGraphState::default(); // 使用电力图状态作为用户状态
+                let graph_response = graph_state.editor_state.draw_graph_editor(
+                    ui,
+                    empty_templates.iter(),
+                    &mut user_state,
+                    Vec::new(),
                 );
                 
                 // 检查节点选择变化

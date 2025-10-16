@@ -157,6 +157,6 @@ impl CalculationResult for f64 {
     }
     
     fn format_result(&self, precision: u32) -> String {
-        format!("{{:.{}f}}", precision, *self)
+        format!("{:.precision$}", self, precision = precision as usize)
     }
 }
