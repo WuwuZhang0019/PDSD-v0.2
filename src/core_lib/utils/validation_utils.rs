@@ -157,11 +157,10 @@ impl ValidationUtils {
             return false;
         }
         
-        // 检查后两位是否为数字
-        let first_digit = ip_rating.chars().nth(2).unwrap_or(' ');
-        let second_digit = ip_rating.chars().nth(3).unwrap_or(' ');
-        
-        first_digit.is_digit(10) && second_digit.is_digit(10)
+        // 直接检查字符是否为数字，避免unwrap_or
+        // 由于前面已经检查了长度为4，这里可以安全访问
+        ip_rating.chars().nth(2).map_or(false, |c| c.is_digit(10)) && 
+        ip_rating.chars().nth(3).map_or(false, |c| c.is_digit(10))
     }
     
     /// 验证UUID格式

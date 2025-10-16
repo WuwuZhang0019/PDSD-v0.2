@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use super::super::error::{CoreError, Result};
+
 /// 三相平衡算法工具
 /// 用于将一组数字分成三组，使三组的和尽可能平衡
 pub struct ThreePhaseBalancer {
@@ -52,7 +54,7 @@ impl ThreePhaseBalancer {
     }
 
     /// 执行平衡算法
-    pub fn balance(&mut self) -> &Vec<Vec<u32>> {
+    pub fn balance(&mut self) -> Result<&Vec<Vec<u32>>> {
         // 2. 迭代优化
         let mut visited = HashSet::new();
 
@@ -66,7 +68,7 @@ impl ThreePhaseBalancer {
             }
 
             // 4. 寻找调整候选：最大和组与最小和组
-            let (max_idx, min_idx) = self.find_max_min_groups();
+            let (max_idx, min_idx) = self.find_max_min_groups()?;
 
             // 5. 尝试从最大和组移动一个数字到最小和组
             if let Some((idx, num)) = self.find_best_move(max_idx, min_idx, &diff) {
@@ -83,20 +85,20 @@ impl ThreePhaseBalancer {
             }
         }
 
-        &self.groups
+        Ok(&self.groups)
     }
 
     /// 查找当前和最大和最小的组索引
-    fn find_max_min_groups(&self) -> (usize, usize) {
+    fn find_max_min_groups(&self) -> Result<(usize, usize)> {
         let max_idx = self.sums.iter().enumerate()
             .max_by_key(|&(_, &s)| s)
             .map(|(i, _)| i)
-            .unwrap();
+            .ok_or(CoreError::Logic("无法找到最大和组，可能数组为空".to_string()))?;
         let min_idx = self.sums.iter().enumerate()
             .min_by_key(|&(_, &s)| s)
             .map(|(i, _)| i)
-            .unwrap();
-        (max_idx, min_idx)
+            .ok_or(CoreError::Logic("无法找到最小和组，可能数组为空".to_string()))?;
+        Ok((max_idx, min_idx))
     }
 
     /// 寻找最佳移动方案
@@ -168,10 +170,10 @@ impl ThreePhaseBalancer {
 /// 便捷函数：直接进行三相平衡计算
 /// - nums: 需要分组的数值数组
 /// 返回值: 分组结果
-pub fn three_phase_balance(nums: &[u32]) -> Vec<Vec<u32>> {
+pub fn three_phase_balance(nums: &[u32]) -> Result<Vec<Vec<u32>>> {
     let mut balancer = ThreePhaseBalancer::new(nums);
-    let groups = balancer.balance();
-    groups.to_vec()
+    let groups = balancer.balance()?;
+    Ok(groups.to_vec())
 }
 
 

@@ -144,18 +144,68 @@
 - ✅ 设计核心数据结构
 - ✅ 实现基础的GUI组件
 
+#### 3.1.4 代码修复
+
+- ✅ 修复三相平衡算法语法错误（2025-10-16）
+  - 修复了three_phase_balance.rs文件第71行缺少分号的语法错误
+
+### 3.1.5 配电回路节点开发
+
+- ✅ 实现完整的回路参数数据结构（名称、额定功率、需要系数、功率因数、电压类型）
+- ✅ 支持单相220V和三相380V两种电压类型计算
+- ✅ 实现参数验证和错误处理机制
+- ✅ 集成电气计算引擎，自动计算回路电流
+- ✅ 创建符合egui_node_graph框架的节点实现
+- ✅ 提供完整的UI展示和交互功能
+- ✅ 添加单元测试和文档
+
+**文件位置**:
+- `src/editor/business/circuit_parameters.rs`
+- `src/editor/business/circuit_calculator.rs`
+- `src/editor/business/circuit_node.rs`
+- `tests/unit/circuit_node_tests.rs`
+
+**使用说明**:
+- 在节点编辑器中，从"电气节点"类别中选择"配电回路"
+- 配置回路参数后自动计算出回路电流
+- 可通过输出端口将计算结果连接到其他节点
+
+### 3.1.6 配电箱节点开发
+
+- ✅ 实现完整的配电箱数据结构（名称、楼层、回路列表、总功率、总电流、进线电流）
+- ✅ 支持回路的添加、更新和删除操作
+- ✅ 实现配电箱计算器，包括总功率计算、总电流计算
+- ✅ 集成三相平衡算法，优化负载分布
+- ✅ 实现回路自动编号功能，按功率降序排列
+- ✅ 创建符合egui_node_graph框架的节点实现，支持多输入多输出
+- ✅ 实现完整的错误处理机制，使用Result和thiserror宏
+- ✅ 添加详细的函数注释和文档
+
+**文件位置**:
+- `src/editor/business/distribution_box_parameters.rs`
+- `src/editor/business/distribution_box_calculator.rs`
+- `src/editor/business/distribution_box_node.rs`
+- `src/editor/business/distribution_box_template.rs`
+- `src/editor/business/circuit_manager.rs`
+- `src/editor/business/distribution_box_tests.rs`
+
+**使用说明**:
+- 在节点编辑器中，从"电气节点"类别中选择"配电箱"
+- 可配置配电箱基本信息（名称、楼层）
+- 可添加多个回路并自动计算总功率和总电流
+- 自动进行三相平衡分配
+- 通过输出端口提供总功率、总电流等关键参数
+
 ### 3.2 进行中工作
 
 #### 3.2.1 电气计算模块
-
 - 🔄 实现电流计算功能
 - 🔄 开发元器件选型逻辑
 - 🔄 设计测试用例
 
 #### 3.2.2 节点类型开发
-
-- 🔄 开发配电回路节点
-- 🔄 开发配电箱节点
+- ✅ 开发配电回路节点
+- ✅ 开发配电箱节点
 - 🔄 实现节点间数据传递
 
 ### 3.3 待开始工作

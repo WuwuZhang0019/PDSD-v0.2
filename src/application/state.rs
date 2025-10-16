@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 /// 应用状态管理模块
 use std::sync::{Arc, Mutex};
+use crate::editor::graph::PowerDistributionGraphEditorState;
 
 /// 应用程序的全局状态
 #[derive(Clone)]
@@ -13,6 +14,8 @@ pub struct AppState {
     pub config: Arc<Mutex<AppConfig>>,
     /// 计算结果
     pub calculation_results: Arc<Mutex<CalculationResults>>,
+    /// 节点图编辑器状态
+    pub graph_editor_state: Arc<Mutex<PowerDistributionGraphEditorState>>,
 }
 
 impl AppState {
@@ -29,6 +32,7 @@ impl Default for AppState {
             nodes: Arc::new(Mutex::new(Vec::new())),
             config: Arc::new(Mutex::new(AppConfig::default())),
             calculation_results: Arc::new(Mutex::new(CalculationResults::default())),
+            graph_editor_state: Arc::new(Mutex::new(PowerDistributionGraphEditorState::new())),
         }
     }
 }

@@ -12,4 +12,8 @@ pub mod editor;
 // 导出导出模块
 pub mod export;
 
+// 导出错误定义和处理器
+pub mod error;
+pub mod error_handler;
+
 // 导入模块将在需要时添加

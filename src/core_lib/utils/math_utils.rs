@@ -170,7 +170,19 @@ impl MathUtils {
             return None;
         }
         
-        Some(*values.iter().max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)).unwrap())
+        // 使用fold避免unwrap，手动计算最大值
+        values.iter().fold(Some(values[0]), |current_max, &value| {
+            match current_max {
+                Some(max_val) => {
+                    if value > max_val {
+                        Some(value)
+                    } else {
+                        Some(max_val)
+                    }
+                },
+                None => Some(value)
+            }
+        })
     }
     
     /// 计算最小值
@@ -180,7 +192,19 @@ impl MathUtils {
             return None;
         }
         
-        Some(*values.iter().min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)).unwrap())
+        // 使用fold避免unwrap，手动计算最小值
+        values.iter().fold(Some(values[0]), |current_min, &value| {
+            match current_min {
+                Some(min_val) => {
+                    if value < min_val {
+                        Some(value)
+                    } else {
+                        Some(min_val)
+                    }
+                },
+                None => Some(value)
+            }
+        })
     }
     
     /// 计算平均值
