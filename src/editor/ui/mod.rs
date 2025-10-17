@@ -7,6 +7,9 @@ pub mod status_bar;
 pub mod custom_connections;
 pub mod node_groups;
 pub mod enhanced_node_finder;
+pub mod node_search;
+pub mod debug_tools;
+pub mod performance_optimization;
 
 // 重新导出常用组件
 pub use node_editor::NodeEditor;

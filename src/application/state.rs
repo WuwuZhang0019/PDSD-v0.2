@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 /// 应用状态管理模块
 use std::sync::{Arc, Mutex};
 use crate::editor::graph::PowerDistributionGraphEditorState;
+use crate::editor::ui::{NodeSearcher, PerformanceOptimizer, Logger};
 
 /// 应用程序的全局状态
 #[derive(Clone)]
@@ -16,6 +17,12 @@ pub struct AppState {
     pub calculation_results: Arc<Mutex<CalculationResults>>,
     /// 节点图编辑器状态
     pub graph_editor_state: Arc<Mutex<PowerDistributionGraphEditorState>>,
+    /// 节点搜索器
+    pub node_searcher: Arc<Mutex<NodeSearcher>>,
+    /// 性能优化器
+    pub performance_optimizer: Arc<Mutex<PerformanceOptimizer>>,
+    /// 日志系统
+    pub logger: Arc<Logger>,
 }
 
 impl AppState {
@@ -33,6 +40,9 @@ impl Default for AppState {
             config: Arc::new(Mutex::new(AppConfig::default())),
             calculation_results: Arc::new(Mutex::new(CalculationResults::default())),
             graph_editor_state: Arc::new(Mutex::new(PowerDistributionGraphEditorState::new())),
+            node_searcher: Arc::new(Mutex::new(NodeSearcher::new())),
+            performance_optimizer: Arc::new(Mutex::new(PerformanceOptimizer::new())),
+            logger: Arc::new(Logger::new(1000)),
         }
     }
 }

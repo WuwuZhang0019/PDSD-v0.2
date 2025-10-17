@@ -2,7 +2,7 @@ use crate::editor::{DataType, UIValueType, UIUserState, UIResponse};
 use crate::editor::business::{CircuitNode, DistributionBoxNodeUI, PowerGraphNode};
 use crate::editor::graph::PowerDistributionGraphEditorState;
 use crate::editor::business::{all_electric_templates, ElectricNodeTemplate};
-use crate::editor::ui::{NodeEditor, custom_connections::draw_custom_connection, node_groups::NodeGroupManager};
+use crate::editor::ui::{NodeEditor, custom_connections::draw_custom_connection, node_groups::NodeGroupManager, node_search_ui, log_panel_ui, performance_settings_ui, performance_stats_ui};
 use crate::application::debug_logger::DebugLogger;
 use eframe::{App, egui};
 use uuid::Uuid;
@@ -30,6 +30,8 @@ pub struct PDSDApp {
     pub node_search_text: String,
     /// 是否显示节点查找器
     pub show_node_finder: bool,
+    /// 右侧面板激活的标签页
+    pub active_right_tab: String,
 }
 
 impl Default for PDSDApp {
@@ -45,12 +47,72 @@ impl Default for PDSDApp {
             group_manager: NodeGroupManager::default(),
             node_search_text: String::new(),
             show_node_finder: false,
+            active_right_tab: "属性".to_string(),
         }
     }
 }
 
 impl App for PDSDApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // 右侧面板 - 可切换的标签页
+        egui::SidePanel::right("right_panel").resizable(true).show(ctx, |ui| {
+            ui.heading("功能面板");
+            
+            // 标签页选择
+            ui.horizontal(|ui| {
+                if ui.selectable_label(self.active_right_tab == "属性", "属性").clicked() {
+                    self.active_right_tab = "属性".to_string();
+                }
+                if ui.selectable_label(self.active_right_tab == "搜索", "搜索").clicked() {
+                    self.active_right_tab = "搜索".to_string();
+                }
+                if ui.selectable_label(self.active_right_tab == "性能", "性能").clicked() {
+                    self.active_right_tab = "性能".to_string();
+                }
+                if ui.selectable_label(self.active_right_tab == "调试", "调试").clicked() {
+                    self.active_right_tab = "调试".to_string();
+                }
+            });
+            
+            ui.separator();
+            
+            // 根据当前标签页显示不同内容
+            match self.active_right_tab.as_str() {
+                "属性" => {
+                    // 显示选中节点的属性
+                    if let Some(selected_node_id) = self.editor_state.selected_node() {
+                        self.draw_node_properties(ui, selected_node_id);
+                    } else {
+                        ui.label("未选中节点");
+                    }
+                },
+                "搜索" => {
+                    // 节点搜索面板
+                    node_search_ui(
+                        ui,
+                        &mut self.node_search_text,
+                        &mut self.show_node_finder,
+                        &self.editor_state.graph
+                    );
+                },
+                "性能" => {
+                    // 性能设置和统计
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        performance_settings_ui(ui);
+                        ui.add_space(20.0);
+                        performance_stats_ui(ui, &self.editor_state);
+                    });
+                },
+                "调试" => {
+                    // 日志面板
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        log_panel_ui(ui, &self.debug_logger);
+                    });
+                },
+                _ => {}
+            }
+        });
+
         egui::CentralPanel::default().show(ctx, |ui| {
             // 创建应用标题和项目信息
             ui.horizontal(|ui| {
@@ -182,6 +244,48 @@ impl App for PDSDApp {
 }
 
 impl PDSDApp {
+    // 绘制节点属性面板
+    fn draw_node_properties(&self, ui: &mut egui::Ui, node_id: egui_node_graph::NodeId) {
+        if let Some(node) = self.editor_state.graph.nodes.get(node_id) {
+            ui.label(format!("节点名称: {}", node.label));
+            ui.label(format!("节点类型: {:?}", node.user_data.node_type));
+            
+            ui.separator();
+            ui.heading("输入参数:");
+            
+            // 显示节点的输入参数
+            for (param_name, input_id) in &node.inputs {
+                if let Some(input_param) = self.editor_state.graph.inputs.get(*input_id) {
+                    ui.label(format!("{}", param_name));
+                    match &input_param.value {
+                        UIValueType::Float(val) => ui.label(format!("  值: {:.2}", val)),
+                        UIValueType::Integer(val) => ui.label(format!("  值: {}", val)),
+                        UIValueType::Bool(val) => ui.label(format!("  值: {}", val)),
+                        UIValueType::String(val) => ui.label(format!("  值: {}", val)),
+                        _ => ui.label("  值: 不支持的类型"),
+                    };
+                }
+            }
+            
+            ui.separator();
+            ui.heading("输出参数:");
+            
+            // 显示节点的输出参数
+            for (param_name, output_id) in &node.outputs {
+                if let Some(output_param) = self.editor_state.graph.outputs.get(*output_id) {
+                    ui.label(format!("{}", param_name));
+                    // 尝试获取计算结果
+                    let cache_key = format!("{}_{}", node_id.0, output_id.0);
+                    if let Some(result) = self.calculation_cache.get(&cache_key) {
+                        ui.label(format!("  结果: {:.2}", result));
+                    } else {
+                        ui.label("  结果: 未计算");
+                    }
+                }
+            }
+        }
+    }
+    
     // 保存项目
     fn save_project(&self) -> Result<(), Box<dyn std::error::Error>> {
         // 创建项目数据结构
