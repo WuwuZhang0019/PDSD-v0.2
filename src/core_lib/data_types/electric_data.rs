@@ -730,6 +730,7 @@ pub enum ElectricDataType {
     CircuitData,    // 回路数据
     DistributionBoxData, // 配电箱数据
     ThreePhaseData, // 三相数据
+    SystemDiagramData, // 系统图数据
     // 标识数据
     String,         // 字符串标识
     Integer,        // 整数标识
@@ -749,6 +750,7 @@ impl ElectricDataType {
             ElectricDataType::CircuitData => egui::Color32::from_rgb(200, 150, 100),  // 棕色 - 回路数据
             ElectricDataType::DistributionBoxData => egui::Color32::from_rgb(100, 200, 200), // 青色 - 配电箱数据
             ElectricDataType::ThreePhaseData => egui::Color32::from_rgb(200, 100, 200), // 紫红色 - 三相数据
+            ElectricDataType::SystemDiagramData => egui::Color32::from_rgb(200, 200, 100),  // 黄绿色 - 系统图数据
             ElectricDataType::String => egui::Color32::from_rgb(200, 200, 200),       // 灰色 - 字符串
             ElectricDataType::Integer => egui::Color32::from_rgb(150, 150, 150),       // 深灰色 - 整数
         }
@@ -765,6 +767,7 @@ impl ElectricDataType {
             ElectricDataType::CircuitData => "回路数据",
             ElectricDataType::DistributionBoxData => "配电箱数据",
             ElectricDataType::ThreePhaseData => "三相数据",
+            ElectricDataType::SystemDiagramData => "系统图数据",
             ElectricDataType::String => "字符串",
             ElectricDataType::Integer => "整数",
         }
@@ -789,6 +792,7 @@ pub enum ElectricValueType {
     CircuitData(CircuitData), // 配电回路数据
     DistributionBoxData(HashMap<String, f64>), // 配电箱数据
     ThreePhaseData(PhaseBalanceInfo), // 三相数据
+    SystemDiagramData(HashMap<String, ElectricValueType>), // 系统图数据
 }
 
 impl ElectricValueType {
@@ -836,6 +840,14 @@ impl ElectricValueType {
     pub fn as_three_phase_data(&self) -> Option<&PhaseBalanceInfo> {
         match self {
             ElectricValueType::ThreePhaseData(data) => Some(data),
+            _ => None,
+        }
+    }
+    
+    /// 获取系统图数据
+    pub fn as_system_diagram_data(&self) -> Option<&HashMap<String, ElectricValueType>> {
+        match self {
+            ElectricValueType::SystemDiagramData(data) => Some(data),
             _ => None,
         }
     }

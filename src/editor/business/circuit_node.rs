@@ -3,7 +3,9 @@
 use std::time::Instant;
 use std::collections::HashMap;
 use std::borrow::Cow;
+use std::fmt;
 use rand;
+use uuid::Uuid;
 
 use egui::Color32;
 use slotmap::{SlotMap, SecondaryMap};
@@ -11,7 +13,7 @@ use slotmap::{SlotMap, SecondaryMap};
 use egui_node_graph::{Graph, NodeId, InputId, OutputId, AnyParameterId, NodeResponse};
 use egui_node_graph::traits::{NodeDataTrait, UserResponseTrait, NodeTemplateTrait};
 
-use crate::core_lib::data_types::{ElectricDataType, ElectricValueType};
+use crate::core_lib::data_types::{ElectricDataType, ElectricValueType, CircuitNodeProperties, CircuitType, CircuitPurpose};
 use crate::editor::business::{CircuitParameters, CircuitResult, VoltageType};
 use crate::editor::business::circuit_calculator::CircuitCalculator;
 
@@ -37,6 +39,8 @@ pub struct CircuitNode {
     pub id: String,
     /// 回路参数
     pub parameters: CircuitParameters,
+    /// 回路属性（与core_lib定义一致）
+    pub properties: CircuitNodeProperties,
     /// 计算结果
     pub result: Option<CircuitResult>,
     /// 错误信息
@@ -48,6 +52,7 @@ impl Default for CircuitNode {
         Self {
             id: format!("circuit_{:x}", rand::random::<u32>()),
             parameters: CircuitParameters::default(),
+            properties: CircuitNodeProperties::default(),
             result: None,
             errors: Vec::new(),
         }
@@ -57,19 +62,104 @@ impl Default for CircuitNode {
 impl CircuitNode {
     /// 创建新的回路节点
     pub fn new(id: String, parameters: CircuitParameters) -> Self {
-        Self {
+        let mut node = Self {
             id,
             parameters,
+            properties: CircuitNodeProperties::default(),
             result: None,
             errors: Vec::new(),
+        };
+        
+        // 同步参数到properties
+        node.sync_parameters_to_properties();
+        node
+    }
+    
+    /// 创建新的单相回路节点
+    pub fn new_single_phase(name: &str, power: f64) -> Self {
+        let params = CircuitParameters {
+            name: name.to_string(),
+            pe: power,
+            kx: 1.0,
+            cos: 0.85,
+            voltage_type: VoltageType::SinglePhase,
+        };
+        
+        let mut node = Self {
+            id: format!("circuit_{:x}", rand::random::<u32>()),
+            parameters: params,
+            properties: CircuitNodeProperties::default(),
+            result: None,
+            errors: Vec::new(),
+        };
+        
+        node.properties.circuit_type = CircuitType::SinglePhase;
+        node.properties.voltage = 220.0;
+        node.sync_parameters_to_properties();
+        
+        // 初始化时先验证再计算
+        node.validate();
+        node.recalculate();
+        node
+    }
+    
+    /// 创建新的三相回路节点
+    pub fn new_three_phase(name: &str, power: f64) -> Self {
+        let params = CircuitParameters {
+            name: name.to_string(),
+            pe: power,
+            kx: 0.8,
+            cos: 0.85,
+            voltage_type: VoltageType::ThreePhase,
+        };
+        
+        let mut node = Self {
+            id: format!("circuit_{:x}", rand::random::<u32>()),
+            parameters: params,
+            properties: CircuitNodeProperties::default(),
+            result: None,
+            errors: Vec::new(),
+        };
+        
+        node.properties.circuit_type = CircuitType::ThreePhase;
+        node.properties.voltage = 380.0;
+        node.properties.phase = None;
+        node.sync_parameters_to_properties();
+        
+        // 初始化时先验证再计算
+        node.validate();
+        node.recalculate();
+        node
+    }
+    
+    /// 将CircuitParameters同步到CircuitNodeProperties
+    pub fn sync_parameters_to_properties(&mut self) {
+        self.properties.power = self.parameters.pe;
+        self.properties.demand_factor = self.parameters.kx;
+        self.properties.power_factor = self.parameters.cos;
+        
+        // 根据电压类型设置回路类型
+        if self.parameters.voltage_type == VoltageType::SinglePhase {
+            self.properties.circuit_type = CircuitType::SinglePhase;
+            self.properties.voltage = 220.0;
+        } else {
+            self.properties.circuit_type = CircuitType::ThreePhase;
+            self.properties.voltage = 380.0;
         }
+        
+        // 设置其他属性
+        self.properties.circuit_name = self.parameters.name.clone();
     }
     
     /// 更新参数
     pub fn update_parameters(&mut self, parameters: CircuitParameters) {
         self.parameters = parameters;
-        self.errors = self.parameters.validation_errors();
-        // 参数更新后，需要重新计算
+        
+        // 同步参数到properties
+        self.sync_parameters_to_properties();
+        
+        // 验证并重新计算
+        self.validate();
         self.recalculate();
     }
     
@@ -83,7 +173,10 @@ impl CircuitNode {
             return;
         }
         
-        // 执行计算
+        // 使用CircuitNodeProperties进行计算
+        self.properties.perform_all_calculations();
+        
+        // 执行原有计算逻辑
         match CircuitCalculator::calculate_circuit_current(&self.parameters) {
             Ok(result) => {
                 self.result = Some(result);
@@ -92,6 +185,67 @@ impl CircuitNode {
             Err(err) => {
                 self.errors.push(err.to_string());
             },
+        }
+    }
+    
+    /// 获取回路属性数据
+    pub fn get_properties(&self) -> &CircuitNodeProperties {
+        &self.properties
+    }
+    
+    /// 获取回路属性数据（可变）
+    pub fn get_properties_mut(&mut self) -> &mut CircuitNodeProperties {
+        &mut self.properties
+    }
+    
+    /// 获取回路类型
+    pub fn get_circuit_type(&self) -> CircuitType {
+        self.properties.circuit_type
+    }
+    
+    /// 设置回路类型
+    pub fn set_circuit_type(&mut self, circuit_type: CircuitType) {
+        self.properties.circuit_type = circuit_type;
+        
+        // 根据回路类型更新电压类型
+        match circuit_type {
+            CircuitType::SinglePhase => {
+                self.parameters.voltage_type = VoltageType::SinglePhase;
+                self.properties.voltage = 220.0;
+            },
+            CircuitType::ThreePhase => {
+                self.parameters.voltage_type = VoltageType::ThreePhase;
+                self.properties.voltage = 380.0;
+            },
+        }
+        
+        // 重新验证和计算
+        self.validate();
+        self.recalculate();
+    }
+    
+    /// 验证节点参数的有效性
+    pub fn validate(&mut self) {
+        self.errors.clear();
+        
+        // 验证功率是否有效
+        if self.parameters.pe <= 0.0 {
+            self.errors.push("功率必须大于0".to_string());
+        }
+        
+        // 验证需求系数是否有效
+        if self.parameters.kx <= 0.0 || self.parameters.kx > 1.0 {
+            self.errors.push("需求系数必须在0和1之间".to_string());
+        }
+        
+        // 验证功率因数是否有效
+        if self.parameters.cos <= 0.0 || self.parameters.cos > 1.0 {
+            self.errors.push("功率因数必须在0和1之间".to_string());
+        }
+        
+        // 验证名称是否为空
+        if self.parameters.name.trim().is_empty() {
+            self.errors.push("回路名称不能为空".to_string());
         }
     }
     
@@ -140,12 +294,62 @@ impl NodeDataTrait for CircuitNode {
     ) -> Vec<NodeResponse<Self::Response, Self>> {
         let mut responses = Vec::new();
         
+        ui.separator();
+        
+        // 显示回路类型和基本信息
+        ui.label("回路信息:");
+        ui.horizontal(|ui| {
+            ui.label("回路类型: ");
+            ui.label(self.properties.circuit_type.to_str());
+        });
+        
         // 显示计算结果
-        if let Some(result) = &self.result {
-            ui.separator();
-            ui.label("计算结果:");
+        ui.label("计算结果:");
+        ui.horizontal(|ui| {
+            ui.label("计算电流: ");
+            ui.label(egui::RichText::new(format!("{:.2} A", self.properties.current)).color(Color32::GREEN));
+        });
+        
+        ui.horizontal(|ui| {
+            ui.label("1.1倍电流: ");
+            ui.label(egui::RichText::new(format!("{:.2} A", self.properties.current_1_1x)).color(Color32::BLUE));
+        });
+        
+        ui.horizontal(|ui| {
+            ui.label("1.25倍电流: ");
+            ui.label(egui::RichText::new(format!("{:.2} A", self.properties.current_1_25x)).color(Color32::YELLOW));
+        });
+        
+        // 显示选型结果
+        ui.label("选型结果:");
+        ui.horizontal(|ui| {
+            ui.label("元器件类型: ");
+            ui.label(&self.properties.component_type);
+        });
+        
+        ui.horizontal(|ui| {
+            ui.label("元器件电流: ");
+            ui.label(egui::RichText::new(format!("{:.0} A", self.properties.component_current)).color(Color32::PURPLE));
+        });
+        
+        ui.horizontal(|ui| {
+            ui.label("线缆规格: ");
+            ui.label(egui::RichText::new(&self.properties.cable_spec).color(Color32::CYAN));
+        });
+        
+        // 如果是单相回路，显示相序
+        if let Some(phase) = self.properties.phase {
             ui.horizontal(|ui| {
-                ui.label("计算电流: ");
+                ui.label("相序: ");
+                ui.label(format!("{}", phase));
+            });
+        }
+        
+        // 显示原有的计算结果
+        if let Some(result) = &self.result {
+            ui.label("详细数据:");
+            ui.horizontal(|ui| {
+                ui.label("原计算电流: ");
                 ui.label(egui::RichText::new(result.formatted_ijs()).color(Color32::GREEN));
             });
             ui.horizontal(|ui| {
@@ -222,6 +426,29 @@ impl NodeDataTrait for CircuitNode {
 
 // 实现UserResponseTrait
 impl UserResponseTrait for CircuitNodeResponse {}
+
+// 为CircuitNode实现Display trait
+impl fmt::Display for CircuitNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "CircuitNode '{}': PE={}kW, KX={}, COS={}, Type={}", 
+            self.parameters.name,
+            self.parameters.pe,
+            self.parameters.kx,
+            self.parameters.cos,
+            match self.parameters.voltage_type {
+                VoltageType::SinglePhase => "Single Phase",
+                VoltageType::ThreePhase => "Three Phase"
+            }
+        )?;
+        
+        // 添加计算结果信息（如果有）
+        if let Some(result) = &self.result {
+            write!(f, ", Current={}A", result.formatted_ijs())?;
+        }
+        
+        Ok(())
+    }
+}
 
 // 为CircuitNodeResponse实现apply方法（不是trait的一部分）
 impl CircuitNodeResponse {

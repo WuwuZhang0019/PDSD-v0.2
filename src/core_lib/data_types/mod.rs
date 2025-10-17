@@ -3,6 +3,7 @@
 
 pub mod electric_data;
 pub mod node_data;
+pub mod circuit_node;
 
 // 重新导出常用类型 - 基础参数类型
 pub use electric_data::{
@@ -21,6 +22,9 @@ pub use electric_data::{
 pub use electric_data::{
     ElectricDataType, ElectricValueType, PhaseBalanceInfo, CircuitData
 };
+
+// 重新导出回路相关类型
+pub use circuit_node::{CircuitType, CircuitPurpose, CircuitNodeProperties};
 
 // 重新导出节点数据类型
 pub use node_data::{

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 // 在测试文件中使用正确的导入方式
 use power_distribution_system_diagram::editor::business::{CircuitNode, CircuitParameters, CircuitCalculator, VoltageType};
+use power_distribution_system_diagram::core_lib::data_types::{CircuitNodeProperties, CircuitType};
 
 #[test]
 fn test_circuit_parameters_validation() {
@@ -98,11 +99,87 @@ fn test_circuit_calculator() {
         VoltageType::SinglePhase
     );
     
+    // 验证计算失败
     let result = CircuitCalculator::calculate_circuit_current(&invalid_params);
     assert!(result.is_err());
     
     // 测试估算功能
     let single_phase_estimate = CircuitCalculator::estimate_circuit_current(1.0, VoltageType::SinglePhase);
+    assert!(single_phase_estimate > 5.2 && single_phase_estimate < 5.3); // 约5.26A
+    
+    let three_phase_estimate = CircuitCalculator::estimate_circuit_current(10.0, VoltageType::ThreePhase);
+    assert!(three_phase_estimate > 17.8 && three_phase_estimate < 18.0); // 约17.86A
+}
+
+#[test]
+fn test_circuit_node_validate() {
+    // 创建有效节点
+    let mut node = CircuitNode::new_single_phase("测试回路", 5.0);
+    node.validate();
+    
+    // 验证有效节点没有错误
+    assert!(node.errors.is_empty());
+    
+    // 测试无效功率
+    node.parameters.pe = -1.0;
+    node.validate();
+    assert!(!node.errors.is_empty());
+    assert!(node.errors.contains(&"功率必须大于0".to_string()));
+    
+    // 测试无效需求系数
+    node.parameters.pe = 5.0; // 恢复有效功率
+    node.parameters.kx = 1.5;
+    node.validate();
+    assert!(!node.errors.is_empty());
+    assert!(node.errors.contains(&"需求系数必须在0和1之间".to_string()));
+    
+    // 测试无效功率因数
+    node.parameters.kx = 0.8; // 恢复有效需求系数
+    node.parameters.cos = 1.5;
+    node.validate();
+    assert!(!node.errors.is_empty());
+    assert!(node.errors.contains(&"功率因数必须在0和1之间".to_string()));
+    
+    // 测试空名称
+    node.parameters.cos = 0.8; // 恢复有效功率因数
+    node.parameters.name = "".to_string();
+    node.validate();
+    assert!(!node.errors.is_empty());
+    assert!(node.errors.contains(&"回路名称不能为空".to_string()));
+}
+
+#[test]
+fn test_circuit_node_properties_sync() {
+    // 创建单相信路节点
+    let mut node = CircuitNode::new_single_phase("测试回路", 5.0);
+    
+    // 验证属性初始值
+    assert_eq!(node.properties.power, 5.0);
+    assert_eq!(node.properties.circuit_type, CircuitType::SinglePhase);
+    assert_eq!(node.properties.voltage, 220.0);
+    
+    // 更新参数并验证同步
+    node.parameters.pe = 10.0;
+    node.parameters.kx = 0.9;
+    node.parameters.cos = 0.95;
+    node.sync_parameters_to_properties();
+    
+    assert_eq!(node.properties.power, 10.0);
+    assert_eq!(node.properties.demand_factor, 0.9);
+    assert_eq!(node.properties.power_factor, 0.95);
+    
+    // 测试回路类型切换
+    node.set_circuit_type(CircuitType::ThreePhase);
+    assert_eq!(node.parameters.voltage_type, VoltageType::ThreePhase);
+    assert_eq!(node.properties.circuit_type, CircuitType::ThreePhase);
+    assert_eq!(node.properties.voltage, 380.0);
+    
+    // 切回单相信路
+    node.set_circuit_type(CircuitType::SinglePhase);
+    assert_eq!(node.parameters.voltage_type, VoltageType::SinglePhase);
+    assert_eq!(node.properties.circuit_type, CircuitType::SinglePhase);
+    assert_eq!(node.properties.voltage, 220.0);
+}
     let three_phase_estimate = CircuitCalculator::estimate_circuit_current(10.0, VoltageType::ThreePhase);
     
     assert!(single_phase_estimate > 0.0);

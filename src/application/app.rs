@@ -1,5 +1,6 @@
 use crate::editor::{DataType, UIValueType, UIUserState, UIResponse};
-use crate::editor::business::{CircuitNode, DistributionBoxNodeUI, PowerGraphNode};
+use crate::editor::business::{CircuitNode, DistributionBoxNodeUI, PowerGraphNode, DataFlowManager, AutoConnectionManager};
+use crate::core_lib::data_types::ElectricValueType;
 use crate::editor::graph::PowerDistributionGraphEditorState;
 use crate::editor::business::{all_electric_templates, ElectricNodeTemplate};
 use crate::editor::ui::{NodeEditor, custom_connections::draw_custom_connection, node_groups::NodeGroupManager, node_search_ui, log_panel_ui, performance_settings_ui, performance_stats_ui};
@@ -32,6 +33,10 @@ pub struct PDSDApp {
     pub show_node_finder: bool,
     /// 右侧面板激活的标签页
     pub active_right_tab: String,
+    /// 数据流向管理器
+    pub data_flow_manager: DataFlowManager,
+    /// 自动连接管理器
+    pub auto_connection_manager: AutoConnectionManager,
 }
 
 impl Default for PDSDApp {
@@ -48,6 +53,8 @@ impl Default for PDSDApp {
             node_search_text: String::new(),
             show_node_finder: false,
             active_right_tab: "属性".to_string(),
+            data_flow_manager: DataFlowManager::new(),
+            auto_connection_manager: AutoConnectionManager::new(),
         }
     }
 }
@@ -188,6 +195,8 @@ impl App for PDSDApp {
                 // 运行计算按钮
                 if ui.button("运行计算").clicked() {
                     self.run_calculations();
+                    // 触发数据流向更新
+                    self.data_flow_manager.propagate_updates(&mut self.editor_state.graph);
                     self.error_message = Some("计算完成".to_string());
                 }
 
@@ -308,8 +317,19 @@ impl PDSDApp {
         println!("运行电气系统计算");
         // 更新调试日志
         self.debug_logger.info("开始执行电气系统计算");
-        // 执行图计算逻辑
+        
+        // 1. 标记所有节点需要更新
+        for node_id in self.editor_state.graph.nodes.keys() {
+            self.data_flow_manager.mark_node_for_update(*node_id);
+        }
+        
+        // 2. 执行图计算逻辑
         self.execute_graph();
+        
+        // 3. 触发数据流向更新
+        self.data_flow_manager.propagate_updates(&mut self.editor_state.graph);
+        
+        self.debug_logger.info("电气系统计算完成");
         // 在实际应用中，这里可能还需要处理计算结果或更新UI显示
     }
 
@@ -455,48 +475,69 @@ impl PDSDApp {
         None
     }
 
-    // 执行图计算
+    // 执行图计算 - 利用数据流向管理器优化计算顺序和缓存
     fn execute_graph(&mut self) {
-        // 获取拓扑排序后的节点执行顺序
-        let node_order = self.topological_sort();
+        // 使用数据流向管理器执行拓扑排序和更新
+        // 这里我们复用数据流向管理器中的拓扑排序结果，避免重复计算
         
-        // 清空计算缓存
-        self.calculation_cache.clear();
+        // 1. 获取拓扑排序后的节点执行顺序
+        let execution_order = self.data_flow_manager.perform_topological_sort(&self.editor_state.graph);
         
-        // 按照拓扑排序顺序执行每个节点
-        for node_id in node_order {
-            if let Some(node) = self.editor_state.graph.nodes.get(node_id) {
-                self.debug_logger.debug(&format!("执行节点: {} (类型: {:?})", node.label, node.user_data.node_type));
-                
-                // 收集输入值用于调试日志
-                let mut input_values = Vec::new();
-                for (_, input_id) in &node.inputs {
-                    if let Some(value) = self.get_input_value(*input_id) {
-                        input_values.push(value);
+        // 2. 按顺序执行每个节点的计算
+        for node_id in execution_order {
+            self.execute_node_calculation(node_id);
+        }
+    }
+    
+    // 执行单个节点的计算
+    fn execute_node_calculation(&mut self, node_id: egui_node_graph::NodeId) {
+        if let Some(node) = self.editor_state.graph.nodes.get(node_id) {
+            // 根据节点类型执行不同的计算逻辑
+            match &node.user_data {
+                PowerGraphNode::CircuitNode(circuit) => {
+                    // 执行回路计算
+                    // 注意：在实际应用中，应该修改circuit的可变引用
+                    // 这里简化处理，仅记录日志
+                    self.debug_logger.info(&format!("计算回路节点: {}, 功率: {:.2}kW", 
+                        circuit.name, circuit.power));
+                },
+                PowerGraphNode::DistributionBoxNode(box_node) => {
+                    // 执行配电箱计算
+                    self.debug_logger.info(&format!("计算配电箱节点: {}, 回路数: {}", 
+                        box_node.name, box_node.circuits.len()));
+                },
+                PowerGraphNode::TrunkLineNode(system_node) => {
+                    // 执行干线系统图计算
+                    self.debug_logger.info(&format!("计算干线系统图节点: {}, 类型: {:?}", 
+                        system_node.name, system_node.system_type));
+                },
+                _ => {
+                    // 其他类型节点的计算
+                }
+            }
+            
+            // 3. 从数据流向管理器获取计算结果并更新本地缓存
+            if let Some(node_cache) = self.data_flow_manager.get_node_cache(node_id) {
+                // 将数据流向管理器中的计算结果同步到应用的计算缓存
+                for (key, value) in node_cache {
+                    // 转换缓存键格式
+                    let cache_key = format!("{}_{}", node_id.0, key);
+                    
+                    // 根据值类型提取数值
+                    match value {
+                        ElectricValueType::Float(val) => {
+                            self.calculation_cache.insert(cache_key, *val);
+                        },
+                        ElectricValueType::Integer(val) => {
+                            self.calculation_cache.insert(cache_key, *val as f64);
+                        },
+                        _ => {
+                            // 不处理非数值类型的缓存
+                        }
                     }
                 }
-                
-                // 为每个输出生成一个示例计算结果
-                for (output_name, output_id) in &node.outputs {
-                    if let Some(output) = self.editor_state.graph.outputs.get(*output_id) {
-                        // 生成示例结果
-                        let result_value = self.calculate_output_value(node_id, *output_id);
-                        
-                        // 缓存计算结果
-                        let cache_key = format!("{}_{}", node_id.0, output_id.0);
-                        self.calculation_cache.insert(cache_key, result_value);
-                        
-                        // 记录日志
-                        self.debug_logger.debug(&format!("  输出 {} ({:?}) = {}", output_name, output.typ, result_value));
-                    }
-                }
-                
-                // 记录节点执行日志
-                self.debug_logger.log_node_execution(node_id, &input_values, None);
             }
         }
-        
-        self.debug_logger.info("图计算执行完成");
     }
     
     // 计算输出值（示例实现）

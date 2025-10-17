@@ -144,11 +144,11 @@ impl DistributionBoxCalculator {
             // 找到当前负载最小的相
             let min_phase_index = Self::find_min_phase_index(&phase_loads);
             
-            // 分配回路到该相
+            // 分配回路到该相，直接使用正确的相位表示
             circuits[index].phase = match min_phase_index {
-                0 => Some('L'), // L1相
-                1 => Some('1'), // L2相
-                2 => Some('2'), // L3相
+                0 => Some('1'), // L1相
+                1 => Some('2'), // L2相
+                2 => Some('3'), // L3相
                 _ => unreachable!(),
             };
             
@@ -178,14 +178,14 @@ impl DistributionBoxCalculator {
             
             for &index in &indices {
                 // 检查该回路是否在最大相上
-                let circuit_phase_index = match circuits[index].phase {
-                    Some('L') => 0, // L1相
-                    Some('1') => 1, // L2相
-                    Some('2') => 2, // L3相
-                    _ => continue, // 跳过未分配的回路
-                };
-                
-                if circuit_phase_index != max_phase_index {
+            let circuit_phase_index = match circuits[index].phase {
+                Some('1') => 0, // L1相
+                Some('2') => 1, // L2相
+                Some('3') => 2, // L3相
+                _ => continue, // 跳过未分配的回路
+            };
+                  
+                  if circuit_phase_index != max_phase_index {
                     continue;
                 }
                 
@@ -211,9 +211,9 @@ impl DistributionBoxCalculator {
             if let Some(transfer_index) = best_transfer_index {
                 // 更新回路相位
                 circuits[transfer_index].phase = match min_phase_index {
-                    0 => Some('L'), // L1相
-                    1 => Some('1'), // L2相
-                    2 => Some('2'), // L3相
+                    0 => Some('1'), // L1相
+                    1 => Some('2'), // L2相
+                    2 => Some('3'), // L3相
                     _ => unreachable!(),
                 };
                 
@@ -229,17 +229,7 @@ impl DistributionBoxCalculator {
             iteration += 1;
         }
         
-        // 调整相位表示，统一使用L1/L2/L3
-        for circuit in circuits.iter_mut() {
-            if let Some(phase_char) = circuit.phase {
-                circuit.phase = match phase_char {
-                    'L' => Some('L'), // L1
-                    '1' => Some('L'), // 更正为L1
-                    '2' => Some('L'), // 更正为L1
-                    _ => Some('L'),   // 默认L1
-                };
-            }
-        }
+        // 相位已经在分配时使用了正确的表示（1=L1, 2=L2, 3=L3）
         
         // 确保返回的相位负载是正确的
         Ok(phase_loads)
@@ -332,9 +322,9 @@ impl DistributionBoxCalculator {
         for circuit in circuits {
             if let Some(phase) = circuit.phase {
                 match phase {
-                    'L' => counts[0] += 1,
-                    '1' => counts[1] += 1,
-                    '2' => counts[2] += 1,
+                    '1' => counts[0] += 1, // L1相
+                    '2' => counts[1] += 1, // L2相
+                    '3' => counts[2] += 1, // L3相
                     _ => {},
                 }
             }

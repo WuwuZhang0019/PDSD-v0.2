@@ -7,35 +7,41 @@ use egui_node_graph::{NodeTemplateTrait, NodeId, Graph, CategoryTrait, InputPara
 use crate::editor::{DataType, UIValueType, UIUserState};
 use crate::core_lib::data_types::ElectricNodeData as CoreElectricNodeData;
 use crate::editor::business::{PowerGraphNode};
+use crate::core_lib::data_types::{CircuitType, CircuitNodeProperties};
 
 /// 电气节点模板，用于创建不同类型的节点
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ElectricNodeTemplate {
     // 配电回路相关节点
-    CircuitNode,
-    CircuitGroupNode,
+    SinglePhaseCircuitNode,    // 单相回路节点
+    ThreePhaseCircuitNode,     // 三相回路节点
+    CircuitNode,               // 通用回路节点
+    CircuitGroupNode,          // 回路组节点
 
     // 配电箱相关节点
-    DistributionBoxNode,
-    MainDistributionBoxNode,
-    SubDistributionBoxNode,
+    DistributionBoxNode,       // 通用配电箱节点
+    MainDistributionBoxNode,   // 主配电箱节点
+    SubDistributionBoxNode,    // 子配电箱节点
 
     // 干线系统图相关节点
-    MainLineNode,
-    FeederLineNode,
+    MainLineNode,              // 主线路节点
+    FeederLineNode,            // 馈线节点
+    MainSystemNode,            // 干线系统图节点
 
     // 电源节点
-    PowerSourceNode,
+    PowerSourceNode,           // 电源节点
 
     // 计算节点
-    CurrentCalculationNode,
-    PhaseBalanceNode,
+    CurrentCalculationNode,    // 电流计算节点
+    PhaseBalanceNode,          // 相平衡节点
 }
 
 // 实现CategoryTrait以支持节点分类
 impl egui_node_graph::CategoryTrait for ElectricNodeTemplate {
     fn name(&self) -> String {
         match self {
+            ElectricNodeTemplate::SinglePhaseCircuitNode |
+            ElectricNodeTemplate::ThreePhaseCircuitNode |
             ElectricNodeTemplate::CircuitNode |
             ElectricNodeTemplate::CircuitGroupNode => "配电回路".to_string(),
 
@@ -44,7 +50,8 @@ impl egui_node_graph::CategoryTrait for ElectricNodeTemplate {
             ElectricNodeTemplate::SubDistributionBoxNode => "配电箱".to_string(),
 
             ElectricNodeTemplate::MainLineNode |
-            ElectricNodeTemplate::FeederLineNode => "干线系统".to_string(),
+            ElectricNodeTemplate::FeederLineNode |
+            ElectricNodeTemplate::MainSystemNode => "干线系统".to_string(),
 
             ElectricNodeTemplate::PowerSourceNode => "电源".to_string(),
 
@@ -64,7 +71,21 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
     
     /// 节点查找器中显示的标签
     fn node_finder_label(&self, _user_state: &mut Self::UserState) -> Cow<str> {
-        Cow::Borrowed(self.node_label().as_str())
+        Cow::Borrowed(match self {
+            ElectricNodeTemplate::SinglePhaseCircuitNode => "单相回路",
+            ElectricNodeTemplate::ThreePhaseCircuitNode => "三相回路",
+            ElectricNodeTemplate::CircuitNode => "配电回路",
+            ElectricNodeTemplate::CircuitGroupNode => "回路组",
+            ElectricNodeTemplate::DistributionBoxNode => "配电箱",
+            ElectricNodeTemplate::MainDistributionBoxNode => "总配电箱",
+            ElectricNodeTemplate::SubDistributionBoxNode => "分配电箱",
+            ElectricNodeTemplate::MainLineNode => "干线",
+            ElectricNodeTemplate::FeederLineNode => "馈线",
+            ElectricNodeTemplate::MainSystemNode => "干线系统图",
+            ElectricNodeTemplate::PowerSourceNode => "电源",
+            ElectricNodeTemplate::CurrentCalculationNode => "电流计算",
+            ElectricNodeTemplate::PhaseBalanceNode => "三相平衡",
+        })
     }
     
     /// 节点在查找器中的分类
@@ -80,6 +101,8 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
     /// 节点标签
     fn node_label(&self) -> String {
         match self {
+            ElectricNodeTemplate::SinglePhaseCircuitNode => "单相回路".to_string(),
+            ElectricNodeTemplate::ThreePhaseCircuitNode => "三相回路".to_string(),
             ElectricNodeTemplate::CircuitNode => "配电回路".to_string(),
             ElectricNodeTemplate::CircuitGroupNode => "回路组".to_string(),
             ElectricNodeTemplate::DistributionBoxNode => "配电箱".to_string(),
@@ -87,6 +110,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
             ElectricNodeTemplate::SubDistributionBoxNode => "分配电箱".to_string(),
             ElectricNodeTemplate::MainLineNode => "干线".to_string(),
             ElectricNodeTemplate::FeederLineNode => "馈线".to_string(),
+            ElectricNodeTemplate::MainSystemNode => "干线系统图".to_string(),
             ElectricNodeTemplate::PowerSourceNode => "电源".to_string(),
             ElectricNodeTemplate::CurrentCalculationNode => "电流计算".to_string(),
             ElectricNodeTemplate::PhaseBalanceNode => "三相平衡".to_string(),
@@ -133,6 +157,8 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
         
         // 创建对应的core_lib::data_types::ElectricNodeData
         let core_node_data = match self {
+            ElectricNodeTemplate::SinglePhaseCircuitNode => crate::core_lib::data_types::ElectricNodeData::CircuitNode(Default::default()),
+            ElectricNodeTemplate::ThreePhaseCircuitNode => crate::core_lib::data_types::ElectricNodeData::CircuitNode(Default::default()),
             ElectricNodeTemplate::CircuitNode => crate::core_lib::data_types::ElectricNodeData::CircuitNode(Default::default()),
             ElectricNodeTemplate::CircuitGroupNode => crate::core_lib::data_types::ElectricNodeData::CircuitNode(Default::default()),
             ElectricNodeTemplate::DistributionBoxNode |
@@ -140,16 +166,32 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
             ElectricNodeTemplate::SubDistributionBoxNode => crate::core_lib::data_types::ElectricNodeData::DistributionBoxNode(Default::default()),
             ElectricNodeTemplate::MainLineNode |
             ElectricNodeTemplate::FeederLineNode => crate::core_lib::data_types::ElectricNodeData::TrunkLineNode(Default::default()),
+            ElectricNodeTemplate::MainSystemNode => crate::core_lib::data_types::ElectricNodeData::TrunkLineNode(Default::default()),
             ElectricNodeTemplate::PowerSourceNode => crate::core_lib::data_types::ElectricNodeData::PowerSourceNode(Default::default()),
             ElectricNodeTemplate::CurrentCalculationNode |
             ElectricNodeTemplate::PhaseBalanceNode => crate::core_lib::data_types::ElectricNodeData::CalculationNode(Default::default()),
         };
         
-        PowerGraphNode {
+        let mut node = PowerGraphNode {
             id: node_id,
             data: core_node_data,
             calculation_cache: std::collections::HashMap::new(),
+        };
+        
+        // 根据节点类型设置特定属性
+        match self {
+            ElectricNodeTemplate::SinglePhaseCircuitNode => {
+                // 可以在这里为单相回路节点设置特定属性
+                // 例如通过某种方式设置回路类型为单相
+            },
+            ElectricNodeTemplate::ThreePhaseCircuitNode => {
+                // 可以在这里为三相回路节点设置特定属性
+                // 例如通过某种方式设置回路类型为三相
+            },
+            _ => {}
         }
+        
+        node
     }
     
     /// 获取节点ID前缀
@@ -162,6 +204,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
             ElectricNodeTemplate::SubDistributionBoxNode => "SDB",
             ElectricNodeTemplate::MainLineNode => "ML",
             ElectricNodeTemplate::FeederLineNode => "FL",
+            ElectricNodeTemplate::MainSystemNode => "MSD",
             ElectricNodeTemplate::PowerSourceNode => "PS",
             ElectricNodeTemplate::CurrentCalculationNode => "CC",
             ElectricNodeTemplate::PhaseBalanceNode => "PB",
@@ -178,6 +221,7 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
             ElectricNodeTemplate::SubDistributionBoxNode => "用于表示子配电箱的节点".to_string(),
             ElectricNodeTemplate::MainLineNode => "用于表示主线路的节点".to_string(),
             ElectricNodeTemplate::FeederLineNode => "用于表示馈线的节点".to_string(),
+            ElectricNodeTemplate::MainSystemNode => "用于自动生成配电干线图和各种监测系统图的节点".to_string(),
             ElectricNodeTemplate::PowerSourceNode => "用于表示电源的节点".to_string(),
             ElectricNodeTemplate::CurrentCalculationNode => "用于进行电流计算的节点".to_string(),
             ElectricNodeTemplate::PhaseBalanceNode => "用于进行相平衡分析的节点".to_string(),
@@ -193,6 +237,28 @@ impl NodeTemplateTrait for ElectricNodeTemplate {
     ) {
         // 根据节点类型添加输入输出参数
         match self {
+            ElectricNodeTemplate::SinglePhaseCircuitNode => {
+                // 单相回路节点：输入功率、电压、功率因数、需用系数，输出计算电流、元器件规格、线缆规格
+                graph.add_input_param(node_id, "功率", InputParamKind::ConnectionOrConstant, DataType::Power, Some(UIValueType::Float(1.0)));
+                graph.add_input_param(node_id, "电压", InputParamKind::ConnectionOrConstant, DataType::Voltage, Some(UIValueType::Float(220.0)));
+                graph.add_input_param(node_id, "功率因数", InputParamKind::ConnectionOrConstant, DataType::PowerFactor, Some(UIValueType::Float(0.85)));
+                graph.add_input_param(node_id, "需用系数", InputParamKind::ConnectionOrConstant, DataType::Coefficient, Some(UIValueType::Float(1.0)));
+                graph.add_output_param(node_id, "计算电流", DataType::Current);
+                graph.add_output_param(node_id, "元器件电流", DataType::Current);
+                graph.add_output_param(node_id, "线缆规格", DataType::String);
+            },
+            
+            ElectricNodeTemplate::ThreePhaseCircuitNode => {
+                // 三相回路节点：输入功率、电压、功率因数、需用系数，输出计算电流、元器件规格、线缆规格
+                graph.add_input_param(node_id, "功率", InputParamKind::ConnectionOrConstant, DataType::Power, Some(UIValueType::Float(3.0)));
+                graph.add_input_param(node_id, "电压", InputParamKind::ConnectionOrConstant, DataType::Voltage, Some(UIValueType::Float(380.0)));
+                graph.add_input_param(node_id, "功率因数", InputParamKind::ConnectionOrConstant, DataType::PowerFactor, Some(UIValueType::Float(0.85)));
+                graph.add_input_param(node_id, "需用系数", InputParamKind::ConnectionOrConstant, DataType::Coefficient, Some(UIValueType::Float(0.8)));
+                graph.add_output_param(node_id, "计算电流", DataType::Current);
+                graph.add_output_param(node_id, "元器件电流", DataType::Current);
+                graph.add_output_param(node_id, "线缆规格", DataType::String);
+            },
+            
             ElectricNodeTemplate::CircuitNode => {
                 // 配电回路节点：一个输入（上级电源），多个输出（功率、电流、回路数据）
                 graph.add_input_param(node_id, "上级电源", InputParamKind::ConnectionOnly, DataType::Voltage, None);
@@ -268,6 +334,8 @@ pub fn get_all_node_templates() -> Vec<ElectricNodeTemplate> {
 pub fn all_electric_templates() -> Vec<ElectricNodeTemplate> {
     vec![
         // 配电回路相关节点
+        ElectricNodeTemplate::SinglePhaseCircuitNode,
+        ElectricNodeTemplate::ThreePhaseCircuitNode,
         ElectricNodeTemplate::CircuitNode,
         ElectricNodeTemplate::CircuitGroupNode,
 
@@ -279,6 +347,7 @@ pub fn all_electric_templates() -> Vec<ElectricNodeTemplate> {
         // 干线系统图相关节点
         ElectricNodeTemplate::MainLineNode,
         ElectricNodeTemplate::FeederLineNode,
+        ElectricNodeTemplate::MainSystemNode,
 
         // 电源节点
         ElectricNodeTemplate::PowerSourceNode,

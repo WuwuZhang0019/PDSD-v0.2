@@ -310,6 +310,170 @@ impl NodeDataTrait for DistributionBoxNodeUI {
                     ui.label(format!("{} ", circuit.name));
                     ui.label(format!("{:.2}kW ", circuit.power));
                     if let Some(phase) = circuit.phase {
+                        ui.label(format!("(相: L{})", phase));
+                    }
+                });
+            }
+            
+            if self.data.circuits.len() > 5 {
+                ui.label(format!("... 还有 {} 个回路", self.data.circuits.len() - 5));
+            }
+        
+        // 显示错误信息
+        if !self.errors.is_empty() {
+            ui.separator();
+            ui.label(egui::RichText::new("错误:").color(Color32::RED));
+            for error in &self.errors {
+                ui.label(egui::RichText::new(format!("- {}", error)).color(Color32::RED));
+            }
+        }
+        
+        responses
+    }
+    
+    /// 顶部栏UI，显示节点名称
+    fn top_bar_ui(
+        &self,
+        ui: &mut egui::Ui,
+        _node_id: NodeId,
+        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
+        _user_state: &mut Self::UserState,
+    ) -> Vec<NodeResponse<Self::Response, Self>> {
+        let mut responses = Vec::new();
+        
+        ui.label(self.get_title());
+        
+        responses
+    }
+    
+    /// 标题栏颜色
+    fn titlebar_color(
+        &self,
+        _ui: &egui::Ui,
+        _node_id: NodeId,
+        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
+        _user_state: &mut Self::UserState,
+    ) -> Option<Color32> {
+        Some(Color32::from_rgb(200, 150, 100)) // 棕色系表示配电箱节点
+    }
+    
+    /// 输出UI
+    fn output_ui(
+        &self,
+        ui: &mut egui::Ui,
+        _node_id: NodeId,
+        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
+        _user_state: &mut Self::UserState,
+        param_name: &str,
+    ) -> Vec<NodeResponse<Self::Response, Self>> {
+        let mut responses = Vec::new();
+        
+        ui.horizontal(|ui| {
+            ui.label(param_name);
+            
+            // 显示对应的值
+            match param_name {
+                "总电流" => {
+                    ui.label(format!("({:.2}A)", self.data.total_current));
+                },
+                "总功率" => {
+                    ui.label(format!("({:.2}kW)", self.data.total_power));
+                },
+                "进线电流" => {
+                    ui.label(format!("({:.0}A)", self.data.incoming_current));
+                },
+                "配电箱数据" => {
+                    ui.label(format!("({}回路)", self.data.circuits.len()));
+                },
+                _ => {},
+            }
+        });
+        
+        responses
+    }
+    
+    /// 参数更新处理
+    fn update_params(
+        &mut self,
+        params: Self::ValueType,
+        user_state: &mut Self::UserState,
+    ) -> Result<(), Self::DataType> {
+        match params {
+            ElectricValueType::String(value) => {
+                // 假设字符串参数是名称
+                self.update_name(value);
+            },
+            ElectricValueType::Float(value) => {
+                // 假设浮点参数是楼层号（向上取整）
+                self.update_floor(value.ceil() as u32);
+            },
+            _ => {},
+        }
+        
+        Ok(())
+    }
+    
+    /// 输入数据处理
+    fn input_data(
+        &mut self,
+        input_idx: usize,
+        data: &Self::DataType,
+        user_state: &mut Self::UserState,
+    ) -> Result<(), Self::DataType> {
+        // 处理来自回路节点的输入数据
+        if let ElectricDataType::CircuitData = data {
+            // 这里简化处理，实际应该根据data的内容创建CircuitInfo
+            // 并添加到配电箱中
+            // 例如：
+            // let circuit_info = CircuitInfo::new(...);
+            // self.add_circuit(circuit_info);
+        }
+        
+        Ok(())
+    }
+    
+    /// 输出数据获取
+    fn output_data(
+        &self,
+        output_idx: usize,
+        user_state: &mut Self::UserState,
+    ) -> Result<Self::DataType, Self::DataType> {
+        match output_idx {
+            0 => {
+                // 输出配电箱数据
+                Ok(ElectricDataType::DistributionBoxData(self.to_data_map()))
+            },
+            1 => {
+                // 输出总电流
+                Ok(ElectricDataType::Current(self.data.total_current))
+            },
+            2 => {
+                // 输出总功率
+                Ok(ElectricDataType::Power(self.data.total_power))
+            },
+            3 => {
+                // 输出进线电流（保护设备电流整定值）
+                Ok(ElectricDataType::Current(self.data.incoming_current))
+            },
+            _ => {
+                // ElectricDataType没有Error成员，这里使用String作为错误指示
+                Err(ElectricDataType::String("无效的输出端口索引".to_string()))
+            }
+        }
+    }
+}
+            let display_circuits = if self.data.circuits.len() > 5 {
+                &self.data.circuits[0..5]
+            } else {
+                &self.data.circuits
+            };
+            
+            for circuit in display_circuits {
+                ui.horizontal(|ui| {
+                    ui.label(format!("#{:02} ", circuit.number));
+                    ui.label(format!("{} ", circuit.name));
+                    ui.label(format!("{:.2}kW ", circuit.power));
+                    if let Some(phase) = circuit.phase {
                         ui.label(format!("(相: {})", phase));
                     }
                 });
@@ -397,7 +561,6 @@ impl NodeDataTrait for DistributionBoxNodeUI {
 // 实现UserResponseTrait接口
 impl UserResponseTrait for DistributionBoxResponse {}
 
-// 为DistributionBoxResponse实现apply方法（不是trait的一部分）
 impl DistributionBoxResponse {
     /// 应用响应到节点图
     pub fn apply(
@@ -440,78 +603,6 @@ impl DistributionBoxResponse {
                     node.user_data.errors.push(err.to_string());
                 }
             },
-        }
-    }
-}
-
-impl DistributionBoxNodeUI {
-    /// 参数更新处理
-    pub fn update_params(
-        &mut self,
-        params: ElectricValueType,
-        _user_state: &mut EditorState,
-    ) -> Result<(), ElectricDataType> {
-        match params {
-            ElectricValueType::String(value) => {
-                // 假设字符串参数是名称
-                self.update_name(value);
-            },
-            ElectricValueType::Float(value) => {
-                // 假设浮点参数是楼层号（向上取整）
-                self.update_floor(value.ceil() as u32);
-            },
-            _ => {},
-        }
-        
-        Ok(())
-    }
-    
-    /// 输入数据处理
-    pub fn input_data(
-        &mut self,
-        input_idx: usize,
-        data: &ElectricDataType,
-        _user_state: &mut EditorState,
-    ) -> Result<(), ElectricDataType> {
-        // 处理来自回路节点的输入数据
-        if let ElectricDataType::CircuitData = data {
-            // 这里简化处理，实际应该根据data的内容创建CircuitInfo
-            // 并添加到配电箱中
-            // 例如：
-            // let circuit_info = CircuitInfo::new(...);
-            // self.add_circuit(circuit_info);
-        }
-        
-        Ok(())
-    }
-    
-    /// 输出数据获取
-    pub fn output_data(
-        &self,
-        output_idx: usize,
-        _user_state: &mut EditorState,
-    ) -> Result<ElectricDataType, ElectricDataType> {
-        match output_idx {
-            0 => {
-                // 输出配电箱数据
-                Ok(ElectricDataType::DistributionBoxData(self.to_data_map()))
-            },
-            1 => {
-                // 输出总电流
-                Ok(ElectricDataType::Current(self.data.total_current))
-            },
-            2 => {
-                // 输出总功率
-                Ok(ElectricDataType::Power(self.data.total_power))
-            },
-            3 => {
-                // 输出进线电流（保护设备电流整定值）
-                Ok(ElectricDataType::Current(self.data.incoming_current))
-            },
-            _ => {
-                // ElectricDataType没有Error成员，这里使用String作为错误指示
-                Err(ElectricDataType::String("无效的输出端口索引".to_string()))
-            }
         }
     }
 }

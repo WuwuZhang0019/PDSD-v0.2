@@ -431,4 +431,3 @@ pub fn performance_monitor_ui(ui: &mut Ui, monitor: &PerformanceMonitor) {
             });
     });
 }
-"},"query_language":"Chinese"}}}
