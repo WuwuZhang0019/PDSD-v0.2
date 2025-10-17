@@ -762,7 +762,8 @@ impl OptimizedElectricNodeGraphApp {
     fn show_performance_panel(&self, ui: &mut egui::Ui) {
         // 显示帧率、渲染时间、更新时间等性能指标
     }
-}```
+}
+```
 
 ### 7.3 大规模图的性能优化
 

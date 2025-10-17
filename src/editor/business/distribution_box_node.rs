@@ -461,7 +461,6 @@ impl NodeDataTrait for DistributionBoxNodeUI {
             }
         }
     }
-}
             let display_circuits = if self.data.circuits.len() > 5 {
                 &self.data.circuits[0..5]
             } else {
@@ -556,7 +555,6 @@ impl NodeDataTrait for DistributionBoxNodeUI {
         
         responses
     }
-}
 
 // 实现UserResponseTrait接口
 impl UserResponseTrait for DistributionBoxResponse {}

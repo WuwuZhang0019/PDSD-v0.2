@@ -1,5 +1,5 @@
 use crate::editor::{DataType, UIValueType, UIUserState, UIResponse};
-use crate::editor::business::{CircuitNode, DistributionBoxNodeUI, PowerGraphNode, DataFlowManager, AutoConnectionManager};
+use crate::editor::business::{CircuitNode, DistributionBoxNodeUI, PowerGraphNode, DataFlowManager, AutoConnectionManager, CircuitType};
 use crate::core_lib::data_types::ElectricValueType;
 use crate::editor::graph::PowerDistributionGraphEditorState;
 use crate::editor::business::{all_electric_templates, ElectricNodeTemplate};
@@ -61,64 +61,97 @@ impl Default for PDSDApp {
 
 impl App for PDSDApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // 右侧面板 - 可切换的标签页
-        egui::SidePanel::right("right_panel").resizable(true).show(ctx, |ui| {
-            ui.heading("功能面板");
-            
-            // 标签页选择
-            ui.horizontal(|ui| {
-                if ui.selectable_label(self.active_right_tab == "属性", "属性").clicked() {
-                    self.active_right_tab = "属性".to_string();
-                }
-                if ui.selectable_label(self.active_right_tab == "搜索", "搜索").clicked() {
-                    self.active_right_tab = "搜索".to_string();
-                }
-                if ui.selectable_label(self.active_right_tab == "性能", "性能").clicked() {
-                    self.active_right_tab = "性能".to_string();
-                }
-                if ui.selectable_label(self.active_right_tab == "调试", "调试").clicked() {
-                    self.active_right_tab = "调试".to_string();
+        // 左侧组件库面板
+            egui::SidePanel::left("node_palette").resizable(true).show(ctx, |ui| {
+                ui.heading("组件库");
+
+                // 配电回路节点
+                ui.collapsing("配电回路", |ui| {
+                    if ui.button("单相配电回路").clicked() {
+                        // 添加单相配电回路节点
+                        self.add_circuit_node(CircuitType::SinglePhase);
+                    }
+                    if ui.button("三相配电回路").clicked() {
+                        // 添加三相配电回路节点
+                        self.add_circuit_node(CircuitType::ThreePhase);
+                    }
+                });
+
+                // 配电箱节点
+                ui.collapsing("配电箱", |ui| {
+                    if ui.button("标准配电箱").clicked() {
+                        // 添加标准配电箱节点
+                        self.add_distribution_box_node();
+                    }
+                });
+
+                // 干线系统图节点
+                ui.collapsing("干线系统", |ui| {
+                    if ui.button("干线系统图").clicked() {
+                        // 添加干线系统图节点
+                        self.add_main_system_node();
+                    }
+                });
+            });
+
+            // 右侧面板 - 可切换的标签页
+            egui::SidePanel::right("right_panel").resizable(true).show(ctx, |ui| {
+                ui.heading("功能面板");
+                
+                // 标签页选择
+                ui.horizontal(|ui| {
+                    if ui.selectable_label(self.active_right_tab == "属性", "属性").clicked() {
+                        self.active_right_tab = "属性".to_string();
+                    }
+                    if ui.selectable_label(self.active_right_tab == "搜索", "搜索").clicked() {
+                        self.active_right_tab = "搜索".to_string();
+                    }
+                    if ui.selectable_label(self.active_right_tab == "性能", "性能").clicked() {
+                        self.active_right_tab = "性能".to_string();
+                    }
+                    if ui.selectable_label(self.active_right_tab == "调试", "调试").clicked() {
+                        self.active_right_tab = "调试".to_string();
+                    }
+                });
+                
+                ui.separator();
+                
+                // 根据当前标签页显示不同内容
+                match self.active_right_tab.as_str() {
+                    "属性" => {
+                        // 显示选中节点的属性
+                        if let Some(selected_node_id) = self.editor_state.selected_node() {
+                            self.draw_node_properties(ui, selected_node_id);
+                        } else {
+                            ui.label("未选中节点");
+                        }
+                    },
+                    "搜索" => {
+                        // 节点搜索面板
+                        node_search_ui(
+                            ui,
+                            &mut self.node_search_text,
+                            &mut self.show_node_finder,
+                            &self.editor_state.graph
+                        );
+                    },
+                    "性能" => {
+                        // 性能设置和统计
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            performance_settings_ui(ui);
+                            ui.add_space(20.0);
+                            performance_stats_ui(ui, &self.editor_state);
+                        });
+                    },
+                    "调试" => {
+                        // 日志面板
+                        egui::ScrollArea::vertical().show(ui, |ui| {
+                            log_panel_ui(ui, &self.debug_logger);
+                        });
+                    },
+                    _ => {}
                 }
             });
-            
-            ui.separator();
-            
-            // 根据当前标签页显示不同内容
-            match self.active_right_tab.as_str() {
-                "属性" => {
-                    // 显示选中节点的属性
-                    if let Some(selected_node_id) = self.editor_state.selected_node() {
-                        self.draw_node_properties(ui, selected_node_id);
-                    } else {
-                        ui.label("未选中节点");
-                    }
-                },
-                "搜索" => {
-                    // 节点搜索面板
-                    node_search_ui(
-                        ui,
-                        &mut self.node_search_text,
-                        &mut self.show_node_finder,
-                        &self.editor_state.graph
-                    );
-                },
-                "性能" => {
-                    // 性能设置和统计
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        performance_settings_ui(ui);
-                        ui.add_space(20.0);
-                        performance_stats_ui(ui, &self.editor_state);
-                    });
-                },
-                "调试" => {
-                    // 日志面板
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        log_panel_ui(ui, &self.debug_logger);
-                    });
-                },
-                _ => {}
-            }
-        });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // 创建应用标题和项目信息
@@ -254,42 +287,71 @@ impl App for PDSDApp {
 
 impl PDSDApp {
     // 绘制节点属性面板
-    fn draw_node_properties(&self, ui: &mut egui::Ui, node_id: egui_node_graph::NodeId) {
-        if let Some(node) = self.editor_state.graph.nodes.get(node_id) {
-            ui.label(format!("节点名称: {}", node.label));
-            ui.label(format!("节点类型: {:?}", node.user_data.node_type));
-            
-            ui.separator();
-            ui.heading("输入参数:");
-            
-            // 显示节点的输入参数
-            for (param_name, input_id) in &node.inputs {
-                if let Some(input_param) = self.editor_state.graph.inputs.get(*input_id) {
-                    ui.label(format!("{}", param_name));
-                    match &input_param.value {
-                        UIValueType::Float(val) => ui.label(format!("  值: {:.2}", val)),
-                        UIValueType::Integer(val) => ui.label(format!("  值: {}", val)),
-                        UIValueType::Bool(val) => ui.label(format!("  值: {}", val)),
-                        UIValueType::String(val) => ui.label(format!("  值: {}", val)),
-                        _ => ui.label("  值: 不支持的类型"),
-                    };
-                }
-            }
-            
-            ui.separator();
-            ui.heading("输出参数:");
-            
-            // 显示节点的输出参数
-            for (param_name, output_id) in &node.outputs {
-                if let Some(output_param) = self.editor_state.graph.outputs.get(*output_id) {
-                    ui.label(format!("{}", param_name));
-                    // 尝试获取计算结果
-                    let cache_key = format!("{}_{}", node_id.0, output_id.0);
-                    if let Some(result) = self.calculation_cache.get(&cache_key) {
-                        ui.label(format!("  结果: {:.2}", result));
-                    } else {
-                        ui.label("  结果: 未计算");
+    fn draw_node_properties(&mut self, ui: &mut egui::Ui, node_id: egui_node_graph::NodeId) {
+        if let Some(node) = self.editor_state.graph.nodes.get_mut(node_id) {
+            match &mut node.user_data {
+                PowerGraphNode::CircuitNode(circuit) => {
+                    ui.heading("配电回路属性");
+                    ui.text_edit_singleline(&mut circuit.name);
+                    ui.add(egui::Slider::new(&mut circuit.power, 0.1..=100.0).text("功率 (kW)"));
+                    if ui.button("更新计算").clicked() {
+                        // 执行计算逻辑
+                        self.data_flow_manager.mark_node_for_update(node_id);
+                        self.run_calculations();
                     }
+
+                    // 显示计算结果
+                    ui.group(|ui| {
+                        ui.label(format!("计算电流: {:.2} A", circuit.current));
+                        ui.label(format!("1.1倍电流: {:.2} A", circuit.current_1_1x));
+                        ui.label(format!("1.25倍电流: {:.2} A", circuit.current_1_25x));
+                        ui.label(format!("元器件类型: {}", circuit.component_type));
+                        ui.label(format!("元器件电流: {:.0} A", circuit.component_current));
+                        ui.label(format!("线缆规格: {}", circuit.cable_spec));
+                        if let Some(phase) = circuit.phase {
+                            ui.label(format!("相序: {}", phase));
+                        }
+                        ui.label(format!("回路编号: {}", circuit.circuit_number));
+                    });
+                },
+                PowerGraphNode::DistributionBoxNode(box_node) => {
+                    ui.heading("配电箱属性");
+                    ui.text_edit_singleline(&mut box_node.name);
+                    ui.add(egui::Slider::new(&mut box_node.floor, 1..=50).text("所在楼层"));
+
+                    // 显示计算结果
+                    ui.group(|ui| {
+                        ui.label(format!("总功率: {:.2} kW", box_node.total_power));
+                        ui.label(format!("总电流: {:.2} A", box_node.total_current));
+                        ui.label(format!("进线保护电流: {:.0} A", box_node.incoming_current));
+                        ui.label(format!("L1相负载: {:.2} kW", box_node.phase_loads[0]));
+                        ui.label(format!("L2相负载: {:.2} kW", box_node.phase_loads[1]));
+                        ui.label(format!("L3相负载: {:.2} kW", box_node.phase_loads[2]));
+                    });
+
+                    // 三相平衡控制
+                    if ui.button("重新平衡三相").clicked() {
+                        self.data_flow_manager.mark_node_for_update(node_id);
+                        self.run_calculations();
+                    }
+                },
+                PowerGraphNode::TrunkLineNode(system_node) => {
+                    ui.heading("干线系统图属性");
+                    ui.checkbox(&mut system_node.auto_layout, "自动布局");
+
+                    // 显示系统类型选择
+                    ui.label("包含系统图:");
+                    // 这里需要根据实际的数据结构实现系统类型选择
+                    
+                    if ui.button("更新系统图").clicked() {
+                        self.data_flow_manager.mark_node_for_update(node_id);
+                        self.run_calculations();
+                    }
+                },
+                _ => {
+                    // 其他类型节点的属性显示
+                    ui.label(format!("节点名称: {}", node.label));
+                    ui.label(format!("节点类型: {:?}", node.user_data.node_type));
                 }
             }
         }
@@ -347,7 +409,114 @@ impl PDSDApp {
 
     // 处理节点响应事件
     fn handle_node_responses(&mut self, responses: Vec<egui_node_graph::NodeResponse<UIResponse, PowerGraphNode>>) {
-        self.editor_state.handle_node_responses(responses);
+        for response in responses {
+            match response {
+                egui_node_graph::NodeResponse::NodeSelected(node_id) => {
+                    // 处理节点选择
+                    self.editor_state.set_selected_node(Some(node_id));
+                },
+                egui_node_graph::NodeResponse::NodeDeselected => {
+                    // 处理节点取消选择
+                    self.editor_state.set_selected_node(None);
+                },
+                egui_node_graph::NodeResponse::ConnectionCreated(from, to) => {
+                    // 处理连接创建
+                    self.handle_new_connection(from, to);
+                },
+                egui_node_graph::NodeResponse::NodeMoved(node_id, _position) => {
+                    // 处理节点移动，检查是否拖入配电箱
+                    if let Some(target_box) = self.check_if_node_dropped_into_box(node_id) {
+                        self.move_circuit_to_box(node_id, target_box);
+                    }
+                },
+                egui_node_graph::NodeResponse::NodeDeleted(node_id) => {
+                    // 处理节点删除
+                    self.handle_node_deletion(node_id);
+                },
+                _ => {}
+            }
+        }
+    }
+    
+    // 检查节点是否拖入配电箱
+    fn check_if_node_dropped_into_box(&self, node_id: egui_node_graph::NodeId) -> Option<egui_node_graph::NodeId> {
+        // 1. 获取被移动节点的位置
+        let node_pos = match self.editor_state.editor_state.node_positions.get(&node_id) {
+            Some(pos) => pos,
+            None => return None,
+        };
+
+        // 2. 检查是否在某个配电箱节点范围内
+        for (box_id, box_node) in &self.editor_state.graph.nodes {
+            if let Some(box_pos) = self.editor_state.editor_state.node_positions.get(box_id) {
+                if let PowerGraphNode::DistributionBoxNode(_) = &box_node.user_data {
+                    // 简化处理，实际应用中应检查精确的边界
+                    if (node_pos.0 - box_pos.0).abs() < 100.0 &&
+                       (node_pos.1 - box_pos.1).abs() < 100.0 {
+                        return Some(*box_id);
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    // 移动配电回路到配电箱
+    fn move_circuit_to_box(&mut self, circuit_id: egui_node_graph::NodeId, box_id: egui_node_graph::NodeId) {
+        // 1. 检查节点类型
+        if !matches!(&self.editor_state.graph.nodes[circuit_id].user_data, PowerGraphNode::CircuitNode(_)) ||
+           !matches!(&self.editor_state.graph.nodes[box_id].user_data, PowerGraphNode::DistributionBoxNode(_)) {
+            return;
+        }
+
+        // 2. 创建连接（如果存在输入和输出端口）
+        if let Some(circuit_output) = self.editor_state.graph.nodes[circuit_id].outputs.values().next() {
+            if let Some(box_input) = self.editor_state.graph.nodes[box_id].inputs.values().next() {
+                // 移除可能存在的旧连接
+                self.editor_state.graph.connections.remove(box_input);
+                // 创建新连接
+                self.editor_state.graph.connections.insert(*box_input, *circuit_output);
+
+                // 3. 标记节点需要更新
+                self.data_flow_manager.mark_node_for_update(box_id);
+
+                // 4. 触发更新传播
+                self.run_calculations();
+            }
+        }
+    }
+
+    // 处理新连接创建
+    fn handle_new_connection(&mut self, from: egui_node_graph::Connection, to: egui_node_graph::Connection) {
+        // 记录连接创建日志
+        self.debug_logger.info(&format!("创建连接: 从节点{}到节点{}", 
+            from.node_id.0, to.node_id.0));
+        
+        // 标记目标节点需要更新
+        self.data_flow_manager.mark_node_for_update(to.node_id);
+    }
+
+    // 处理节点删除
+    fn handle_node_deletion(&mut self, node_id: egui_node_graph::NodeId) {
+        // 记录节点删除日志
+        if let Some(node) = self.editor_state.graph.nodes.get(&node_id) {
+            self.debug_logger.info(&format!("删除节点: {}, 类型: {:?}", 
+                node.label, node.user_data.node_type));
+        }
+        
+        // 清除相关缓存
+        self.data_flow_manager.clear_node_cache(node_id);
+        
+        // 从计算缓存中移除相关条目
+        let cache_keys_to_remove: Vec<String> = self.calculation_cache.keys()
+            .filter(|key| key.starts_with(&node_id.0.to_string()))
+            .cloned()
+            .collect();
+            
+        for key in cache_keys_to_remove {
+            self.calculation_cache.remove(&key);
+        }
     }
 
     // 构建拓扑排序以确定节点执行顺序
@@ -555,6 +724,68 @@ impl PDSDApp {
             }
         } else {
             0.0
+        }
+    }
+    
+    // 添加配电回路节点
+    fn add_circuit_node(&mut self, circuit_type: CircuitType) {
+        // 获取所有电路节点模板
+        let templates = all_electric_templates();
+        
+        // 查找匹配的模板
+        let template_name = match circuit_type {
+            CircuitType::SinglePhase => "单相配电回路",
+            CircuitType::ThreePhase => "三相配电回路",
+        };
+        
+        if let Some(template) = templates.iter().find(|t| t.node_label() == template_name) {
+            // 添加新节点
+            let _ = self.editor_state.graph.add_node(
+                template.node_label().to_string(),
+                template.user_data(&mut self.editor_state.user_state),
+                |graph, node_id| template.build_node(graph, &mut self.editor_state.user_state, node_id),
+            );
+            
+            // 记录日志
+            self.debug_logger.info(&format!("添加节点: {}", template_name));
+        }
+    }
+    
+    // 添加配电箱节点
+    fn add_distribution_box_node(&mut self) {
+        // 获取所有模板
+        let templates = all_electric_templates();
+        
+        // 查找配电箱模板
+        if let Some(template) = templates.iter().find(|t| t.node_label() == "标准配电箱") {
+            // 添加新节点
+            let _ = self.editor_state.graph.add_node(
+                template.node_label().to_string(),
+                template.user_data(&mut self.editor_state.user_state),
+                |graph, node_id| template.build_node(graph, &mut self.editor_state.user_state, node_id),
+            );
+            
+            // 记录日志
+            self.debug_logger.info("添加节点: 标准配电箱");
+        }
+    }
+    
+    // 添加干线系统图节点
+    fn add_main_system_node(&mut self) {
+        // 获取所有模板
+        let templates = all_electric_templates();
+        
+        // 查找干线系统图模板
+        if let Some(template) = templates.iter().find(|t| t.node_label() == "干线系统图") {
+            // 添加新节点
+            let _ = self.editor_state.graph.add_node(
+                template.node_label().to_string(),
+                template.user_data(&mut self.editor_state.user_state),
+                |graph, node_id| template.build_node(graph, &mut self.editor_state.user_state, node_id),
+            );
+            
+            // 记录日志
+            self.debug_logger.info("添加节点: 干线系统图");
         }
     }
 }
