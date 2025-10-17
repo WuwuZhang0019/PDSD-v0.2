@@ -1,5 +1,125 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::process::id as process_id;
+
+use super::electric_data::{Breaker, CableInfo, CircuitData, CircuitNumber, Phase, PhaseBalanceInfo};
+
+/// 物理尺寸
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Dimensions {
+    pub width: f64,    // 宽度(mm)
+    pub height: f64,   // 高度(mm)
+    pub depth: f64,    // 深度(mm)
+}
+
+impl Default for Dimensions {
+    fn default() -> Self {
+        Self {
+            width: 400.0,
+            height: 600.0,
+            depth: 200.0,
+        }
+    }
+}
+
+/// 配电箱数据结构
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DistributionBoxData {
+    pub id: String,                      // 唯一标识符
+    pub name: String,                    // 配电箱名称
+    pub number: CircuitNumber,           // 配电箱编号
+    pub incoming_circuit: Option<String>, // 进线回路ID
+    pub outgoing_circuits: Vec<String>,  // 出线回路ID列表
+    pub total_power: f64,                // 总功率(kW)
+    pub total_current: f64,              // 总电流(A)
+    pub voltage_level: f64,              // 电压等级(kV)
+    pub phase_count: u8,                 // 相数(1或3)
+    pub main_protection: Breaker,        // 主保护设备
+    pub monitoring_module: Option<String>, // 监测模块
+    pub phase_balance: PhaseBalanceInfo, // 三相平衡信息
+    pub location: String,                // 安装位置
+    pub dimensions: Dimensions,          // 箱体尺寸
+    pub manufacturer: Option<String>,    // 制造商
+}
+
+impl Default for DistributionBoxData {
+    fn default() -> Self {
+        Self {
+            id: generate_unique_id(),
+            name: "配电箱".to_string(),
+            number: CircuitNumber::new(1),
+            incoming_circuit: None,
+            outgoing_circuits: Vec::new(),
+            total_power: 0.0,
+            total_current: 0.0,
+            voltage_level: 0.4,
+            phase_count: 3,
+            main_protection: Breaker::default(),
+            monitoring_module: None,
+            phase_balance: PhaseBalanceInfo::default(),
+            location: "" .to_string(),
+            dimensions: Dimensions::default(),
+            manufacturer: None,
+        }
+    }
+}
+
+impl DistributionBoxData {
+    /// 添加出线回路
+    pub fn add_outgoing_circuit(&mut self, circuit_id: String) {
+        if !self.outgoing_circuits.contains(&circuit_id) {
+            self.outgoing_circuits.push(circuit_id);
+        }
+    }
+    
+    /// 移除出线回路
+    pub fn remove_outgoing_circuit(&mut self, circuit_id: &str) {
+        self.outgoing_circuits.retain(|id| id != circuit_id);
+    }
+    
+    /// 更新总功率和总电流
+    pub fn update_total_power_and_current(&mut self, circuits: &HashMap<String, CircuitData>) {
+        let mut total_p = 0.0;
+        let mut total_i = 0.0;
+        
+        for circuit_id in &self.outgoing_circuits {
+            if let Some(circuit) = circuits.get(circuit_id) {
+                total_p += circuit.rated_power * circuit.demand_coefficient;
+                total_i += circuit.calculated_current;
+            }
+        }
+        
+        self.total_power = total_p;
+        self.total_current = total_i;
+    }
+    
+    /// 获取下一个可用的回路编号
+    pub fn get_next_circuit_number(&self) -> CircuitNumber {
+        let last_number = self.outgoing_circuits.iter()
+            .filter_map(|id| CircuitNumber::from_str(id))
+            .max_by(|a, b| a.compare(b))
+            .unwrap_or_else(|| CircuitNumber::new(0));
+        
+        last_number.next()
+    }
+    
+    /// 获取配电箱的完整编号字符串
+    pub fn get_full_number(&self) -> String {
+        format!("AL{}", self.number.number)
+    }
+}
+
+/// 生成唯一标识符
+fn generate_unique_id() -> String {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis();
+    let pid = process_id();
+    let thread_id = std::thread::current().id();
+    format!("{}_{}_{:?}", timestamp, pid, thread_id)
+}
 
 /// 配电回路节点数据结构
 #[derive(Debug, Clone, Serialize, Deserialize)]

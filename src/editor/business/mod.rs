@@ -9,6 +9,7 @@ pub mod distribution_box_calculator;
 pub mod distribution_box_node;
 pub mod distribution_box_template;
 pub mod node_data_transfer;
+pub mod node_templates;
 
 // 条件导出测试模块
 #[cfg(test)]
@@ -24,6 +25,7 @@ pub use distribution_box_calculator::DistributionBoxCalculator;
 pub use distribution_box_node::DistributionBoxNodeUI;
 pub use distribution_box_template::DistributionBoxTemplate;
 pub use node_data_transfer::{PowerGraphNode, PowerGraphState};
+pub use node_templates::{ElectricNodeTemplate, get_all_node_templates};
 
 /// 业务逻辑模块初始化函数
 pub fn initialize() {

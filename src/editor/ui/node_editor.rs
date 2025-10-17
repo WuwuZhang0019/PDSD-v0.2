@@ -1,277 +1,196 @@
-/// 节点编辑器模块
-use eframe::egui;
-use crate::application::AppState;
-use crate::editor::graph::PowerDistributionGraphEditorState;
-use crate::editor::business::{CircuitNodeTemplate, PowerGraphState};
+/// 节点编辑器UI组件
+/// 实现配电系统图的节点编辑器界面
 
-/// 节点编辑器响应信息
-pub struct NodeEditorResponse {
-    /// 选中的节点ID
-    pub selected_node_id: Option<String>,
-    /// 鼠标位置
-    pub mouse_pos: Option<(f32, f32)>,
+use eframe::egui::{self, Ui, ScrollArea, Window}; 
+use egui_node_graph::{draw_graph_editor, NodeResponse}; 
+use crate::editor::{DataType, UIValueType, UIUserState, UIResponse};
+use crate::editor::business::{PowerGraphNode}; 
+use crate::editor::graph::PowerDistributionGraphEditorState;
+use crate::editor::business::{ElectricNodeTemplate, get_all_node_templates};
+
+/// 节点编辑器UI组件
+pub struct NodeEditor {
+    /// 节点图编辑器状态
+    pub editor_state: PowerDistributionGraphEditorState,
+    /// 节点搜索框的文本
+    pub node_search_text: String,
+    /// 是否显示节点查找器
+    pub show_node_finder: bool,
 }
 
-impl Default for NodeEditorResponse {
+impl Default for NodeEditor {
     fn default() -> Self {
         Self {
-            selected_node_id: None,
-            mouse_pos: None,
+            editor_state: PowerDistributionGraphEditorState::default(),
+            node_search_text: String::new(),
+            show_node_finder: false,
         }
     }
-}
-
-/// 节点编辑器
-pub struct NodeEditor {
-    /// 是否显示网格
-    pub show_grid: bool,
-    /// 缩放级别
-    pub zoom: f32,
-    /// 平移偏移
-    pub pan_offset: (f32, f32),
 }
 
 impl NodeEditor {
-    /// 创建新的节点编辑器
+    /// 创建新的节点编辑器UI组件
     pub fn new() -> Self {
-        Self {
-            show_grid: true,
-            zoom: 1.0,
-            pan_offset: (0.0, 0.0),
-        }
+        Self::default()
     }
     
-    /// 设置缩放级别
-    pub fn set_zoom(&mut self, zoom: f32) {
-        self.zoom = zoom.clamp(0.1, 5.0);
-    }
-    
-    /// 获取缩放级别
-    pub fn get_zoom(&self) -> f32 {
-        self.zoom
-    }
-    
-    /// 设置是否显示网格
-    pub fn set_show_grid(&mut self, show: bool) {
-        self.show_grid = show;
-    }
-    
-    /// 获取是否显示网格
-    pub fn is_grid_enabled(&self) -> bool {
-        self.show_grid
-    }
-    
-    /// 渲染节点编辑器（旧版接口，保持兼容性）
-    pub fn render(&mut self, ui: &mut egui::Ui, state: &AppState, selected_node_id: &Option<String>) {
-        // 创建一个可滚动的区域
-        egui::ScrollArea::both()
-            .auto_shrink([false; 2])
-            .show(ui, |ui| {
-                // 获取可用空间
-                let available_size = ui.available_size();
-                
-                // 创建绘图区域
-                let (mut response, painter) = ui.allocate_painter(
-                    available_size,
-                    egui::Sense::drag(),
-                );
-                
-                // 处理拖动事件
-                if response.dragged() {
-                    let delta = response.drag_delta();
-                    self.pan_offset.0 += delta.x;
-                    self.pan_offset.1 += delta.y;
-                }
-                
-                // 处理滚轮缩放
-                if let Some(scroll_delta) = ui.input(|i| i.scroll_delta.y) {
-                    // 缩放因子
-                    let zoom_factor = if scroll_delta > 0.0 {
-                        1.1
-                    } else {
-                        0.9
-                    };
-                    
-                    // 计算鼠标在编辑器中的位置
-                    let mouse_pos = response.interact_pointer_pos()
-                        .map(|pos| (pos.x, pos.y))
-                        .unwrap_or((available_size.x / 2.0, available_size.y / 2.0));
-                    
-                    // 更新缩放
-                    let old_zoom = self.zoom;
-                    self.zoom = (self.zoom * zoom_factor).clamp(0.1, 5.0);
-                    
-                    // 调整平移偏移以实现以鼠标为中心的缩放
-                    let zoom_ratio = self.zoom / old_zoom;
-                    self.pan_offset.0 = mouse_pos.0 - (mouse_pos.0 - self.pan_offset.0) * zoom_ratio;
-                    self.pan_offset.1 = mouse_pos.1 - (mouse_pos.1 - self.pan_offset.1) * zoom_ratio;
-                }
-                
-                // 绘制网格（如果启用）
-                if self.show_grid {
-                    self.draw_grid(&painter, available_size);
-                }
-                
-                // 绘制节点之间的连线
-                self.draw_connections(&painter, state);
+    /// 显示节点编辑器UI
+    pub fn show(&mut self, ctx: &egui::Context) {
+        // 创建节点编辑器窗口
+        Window::new("配电系统图编辑器")
+            .default_size([800.0, 600.0])
+            .show(ctx, |ui| {
+                self.show_ui(ui);
             });
     }
     
-    /// 使用图状态渲染节点编辑器（新版接口）
-    pub fn render_with_graph(
-        &mut self, 
-        ui: &mut egui::Ui, 
-        state: &AppState, 
-        selected_node_type: Option<String>,
-        graph_state: &mut PowerDistributionGraphEditorState
-    ) -> NodeEditorResponse {
-        let mut response = NodeEditorResponse::default();
+    /// 显示节点编辑器的内容UI
+    fn show_ui(&mut self, ui: &mut Ui) {
+        // 顶部工具栏
+        ui.horizontal(|ui| {
+            // 添加节点按钮
+            if ui.button("添加节点").clicked() {
+                self.show_node_finder = true;
+            }
+            
+            // 清除按钮
+            if ui.button("清除").clicked() {
+                self.editor_state.graph.clear();
+            }
+        });
         
-        // 创建一个可滚动的区域
-        egui::ScrollArea::both()
-            .auto_shrink([false; 2])
+        ui.separator();
+        
+        // 节点图编辑区域
+        ScrollArea::both()
+            .auto_shrink([false, false])
             .show(ui, |ui| {
-                // 获取可用空间
-                let available_size = ui.available_size();
-                
-                // 创建绘图区域
-                let (mut response_area, painter) = ui.allocate_painter(
-                    available_size,
-                    egui::Sense::drag(),
-                );
-                
-                // 处理拖动事件
-                if response_area.dragged() {
-                    let delta = response_area.drag_delta();
-                    self.pan_offset.0 += delta.x;
-                    self.pan_offset.1 += delta.y;
-                }
-                
-                // 处理滚轮缩放
-                if let Some(scroll_delta) = ui.input(|i| i.scroll_delta.y) {
-                    // 缩放因子
-                    let zoom_factor = if scroll_delta > 0.0 {
-                        1.1
-                    } else {
-                        0.9
-                    };
-                    
-                    // 计算鼠标在编辑器中的位置
-                    let mouse_pos = response_area.interact_pointer_pos()
-                        .map(|pos| (pos.x, pos.y))
-                        .unwrap_or((available_size.x / 2.0, available_size.y / 2.0));
-                    
-                    // 更新缩放
-                    let old_zoom = self.zoom;
-                    self.zoom = (self.zoom * zoom_factor).clamp(0.1, 5.0);
-                    
-                    // 调整平移偏移以实现以鼠标为中心的缩放
-                    let zoom_ratio = self.zoom / old_zoom;
-                    self.pan_offset.0 = mouse_pos.0 - (mouse_pos.0 - self.pan_offset.0) * zoom_ratio;
-                    self.pan_offset.1 = mouse_pos.1 - (mouse_pos.1 - self.pan_offset.1) * zoom_ratio;
-                }
-                
-                // 更新鼠标位置信息
-                response.mouse_pos = response_area.interact_pointer_pos().map(|pos| (pos.x, pos.y));
-                
-                // 绘制网格（如果启用）
-                if self.show_grid {
-                    self.draw_grid(&painter, available_size);
-                }
-                
-                // 使用egui_node_graph渲染节点图
-                // 注意：我们需要提供节点模板迭代器和用户状态
-                // 这里使用空的节点模板列表，实际应用中应该提供可用的模板
-                let empty_templates: Vec<CircuitNodeTemplate> = Vec::new();
-                let mut user_state = PowerGraphState::default(); // 使用电力图状态作为用户状态
-                let graph_response = graph_state.editor_state.draw_graph_editor(
+                // 绘制节点编辑器
+                let responses = draw_graph_editor(
                     ui,
-                    empty_templates.iter(),
-                    &mut user_state,
-                    Vec::new(),
+                    &mut self.editor_state.graph,
+                    &mut self.editor_state.editor_state,
+                    &mut self.editor_state.user_state,
+                    None, // 可选的背景
                 );
                 
-                // 检查节点选择变化
-                if let Some(selection) = &graph_state.editor_state.selected_nodes {
-                    if !selection.is_empty() {
-                        // 这里简化处理，只取第一个选中的节点
-                        let node_id = selection.iter().next().unwrap();
-                        response.selected_node_id = Some(node_id.0.to_string());
-                    }
-                }
+                // 处理节点响应
+                self.handle_node_responses(responses);
+            });
+            
+        // 如果需要显示节点查找器
+        if self.show_node_finder {
+            self.show_node_finder(ui);
+        }
+        
+        // 显示选中节点的详细信息（如果有）
+        if let Some(node_id) = self.editor_state.selected_node_id {
+            self.show_node_details(ui, node_id);
+        }
+    }
+    
+    /// 处理节点响应
+    fn handle_node_responses(&mut self, responses: Vec<NodeResponse<UIResponse, PowerGraphNode>>) {
+        self.editor_state.handle_node_responses(responses);
+    }
+    
+    /// 显示节点查找器
+    fn show_node_finder(&mut self, ui: &mut Ui) {
+        // 创建节点查找器弹窗
+        let mut close_finder = false;
+        
+        Window::new("选择节点类型")
+            .default_size([300.0, 400.0])
+            .show(ui.ctx(), |ui| {
+                // 搜索框
+                ui.text_edit_singleline(&mut self.node_search_text);
+                ui.separator();
                 
-                // 如果有选中的节点类型，处理节点添加
-                if let Some(node_type) = &selected_node_type {
-                    if let Some(node_template) = graph_state.node_templates.get(node_type) {
-                        // 处理鼠标点击添加节点
-                        if response_area.clicked() {
-                            if let Some(mouse_pos) = response_area.interact_pointer_pos() {
-                                // 计算节点在世界坐标系中的位置
-                                let world_pos = (
-                                    mouse_pos.x - self.pan_offset.0,
-                                    mouse_pos.y - self.pan_offset.1,
-                                );
-                                
-                                // 创建新节点
-                                let mut node = node_template.create_node();
-                                graph_state.graph.set_node_position(
-                                    graph_state.add_node(node),
-                                    world_pos.0, world_pos.1
-                                );
+                // 显示所有可用的节点模板
+                ScrollArea::vertical().show(ui, |ui| {
+                    let node_templates = get_all_node_templates();
+                    
+                    for template in node_templates {
+                        let label = template.node_finder_label(&mut self.editor_state.user_state);
+                        
+                        // 如果有搜索文本，过滤结果
+                        if !self.node_search_text.is_empty() {
+                            if !label.contains(&self.node_search_text) {
+                                continue;
+                            }
+                        }
+                        
+                        // 显示节点模板按钮
+                        if ui.button(label).clicked() {
+                            // 使用模板创建新节点
+                            let node_id = self.editor_state.graph.add_node_from_template(
+                                template,
+                                &mut self.editor_state.user_state,
+                                ui.next_widget_position() - egui::vec2(50.0, 50.0), // 居中放置节点
+                            );
+                            
+                            // 将节点添加到编辑器状态中
+                            self.editor_state.selected_node_id = Some(node_id);
+                            close_finder = true;
+                        }
+                    }
+                });
+                
+                // 关闭按钮
+                if ui.button("取消").clicked() {
+                    close_finder = true;
+                }
+            });
+            
+        if close_finder {
+            self.show_node_finder = false;
+            self.node_search_text.clear();
+        }
+    }
+    
+    /// 显示选中节点的详细信息
+    fn show_node_details(&self, ui: &mut Ui, node_id: crate::editor::graph::egui_node_graph::NodeId) {
+        // 获取节点信息
+        if let Some(node) = self.editor_state.graph.nodes.get(node_id) {
+            Window::new("节点详情")
+                .default_size([300.0, 400.0])
+                .show(ui.ctx(), |ui| {
+                    ui.label(format!("节点ID: {:?}", node_id));
+                    ui.label(format!("节点类型: {:?}", node.node_type));
+                    ui.label(format!("节点名称: {}", node.name));
+                    ui.label(format!("节点描述: {}", node.description));
+                    
+                    ui.separator();
+                    
+                    // 显示节点输入参数
+                    ui.label("输入参数:");
+                    for (input_id, input) in &self.editor_state.graph.inputs {
+                        if input.node == node_id {
+                            ui.label(format!("- {} ({:?})", 
+                                input.name, 
+                                input.data_type
+                            ));
+                            
+                            // 如果有连接，显示连接的输出
+                            if let Some(connected_output_id) = self.editor_state.graph.connections.get(input_id) {
+                                ui.label(format!("  已连接到输出ID: {:?}", connected_output_id));
                             }
                         }
                     }
-                }
-            });
-        
-        response
-    }
-    
-    /// 绘制网格
-    fn draw_grid(&self, painter: &egui::Painter, size: egui::Vec2) {
-        let grid_size = 20.0 * self.zoom;
-        
-        // 计算网格的起始位置（考虑平移偏移）
-        let start_x = (self.pan_offset.0 % grid_size).floor();
-        let start_y = (self.pan_offset.1 % grid_size).floor();
-        
-        // 绘制垂直线
-        for x in (start_x as i32..size.x as i32).step_by(grid_size as usize) {
-            painter.line_segment(
-                [
-                    egui::pos2(x as f32, 0.0),
-                    egui::pos2(x as f32, size.y),
-                ],
-                egui::Stroke::new(0.5, egui::Color32::LIGHT_GRAY),
-            );
+                    
+                    ui.separator();
+                    
+                    // 显示节点输出参数
+                    ui.label("输出参数:");
+                    for (output_id, output) in &self.editor_state.graph.outputs {
+                        if output.node == node_id {
+                            ui.label(format!("- {} ({:?})", 
+                                output.name, 
+                                output.data_type
+                            ));
+                        }
+                    }
+                });
         }
-        
-        // 绘制水平线
-        for y in (start_y as i32..size.y as i32).step_by(grid_size as usize) {
-            painter.line_segment(
-                [
-                    egui::pos2(0.0, y as f32),
-                    egui::pos2(size.x, y as f32),
-                ],
-                egui::Stroke::new(0.5, egui::Color32::LIGHT_GRAY),
-            );
-        }
-    }
-    
-    /// 绘制节点之间的连线
-    fn draw_connections(&self, painter: &egui::Painter, _state: &AppState) {
-        // 实际应用中，这里应该根据节点之间的连接关系绘制连线
-        // 目前暂时留空，因为新的render_with_graph方法使用egui_node_graph来处理
-    }
-    
-    /// 重置视图
-    pub fn reset_view(&mut self) {
-        self.zoom = 1.0;
-        self.pan_offset = (0.0, 0.0);
-    }
-    
-    /// 切换网格显示
-    pub fn toggle_grid(&mut self) {
-        self.show_grid = !self.show_grid;
     }
 }

@@ -1,7 +1,15 @@
 /// 编辑器模块
+/// 负责节点编辑器和UI界面的实现
+
 pub mod business;
 pub mod graph;
 pub mod ui;
+pub mod error;
+pub mod data_types;
+
+// 重新导出常用类型
+pub use data_types::{UIValueType, CircuitInfo, DistributionBoxInfo, PhaseBalanceInfo, DataType, UIUserState, UIResponse, ElectricNodeData, ElectricNodeType};
+pub use data_types::{update_circuit_data_from_ui, update_box_data_from_ui};
 
 use eframe::egui;
 use crate::application::AppState;
