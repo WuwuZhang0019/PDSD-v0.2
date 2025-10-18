@@ -3,11 +3,15 @@ use crate::editor::business::{CircuitNode, DistributionBoxNodeUI, PowerGraphNode
 use crate::core_lib::data_types::ElectricValueType;
 use crate::editor::graph::PowerDistributionGraphEditorState;
 use crate::editor::business::{all_electric_templates, ElectricNodeTemplate};
-use crate::editor::ui::{NodeEditor, custom_connections::draw_custom_connection, node_groups::NodeGroupManager, node_search_ui, log_panel_ui, performance_settings_ui, performance_stats_ui};
+use crate::editor::ui::{NodeEditor, custom_connections::draw_custom_connection, node_groups::NodeGroupManager, node_search_ui};
+use crate::editor::ui::debug_tools::{log_panel_ui, LOGGER, LogLevel};
+use crate::editor::ui::performance_optimization::{PerformanceOptimizer, performance_settings_ui, performance_stats_ui};
 use crate::application::debug_logger::DebugLogger;
 use eframe::{App, egui};
 use uuid::Uuid;
 use std::collections::HashMap;
+use std::time::{Instant, Duration};
+use chrono::Local;
 use rand; // 添加随机数库导入
 
 /// 电力配电系统设计应用程序主结构体
@@ -37,6 +41,13 @@ pub struct PDSDApp {
     pub data_flow_manager: DataFlowManager,
     /// 自动连接管理器
     pub auto_connection_manager: AutoConnectionManager,
+    /// 性能优化管理器
+    pub performance_optimizer: PerformanceOptimizer,
+    /// 上次更新时间
+    pub last_update_time: Instant,
+    /// 帧率计算相关
+    pub frame_count: u32,
+    pub last_fps_update_time: Instant,
 }
 
 impl Default for PDSDApp {
@@ -55,12 +66,28 @@ impl Default for PDSDApp {
             active_right_tab: "属性".to_string(),
             data_flow_manager: DataFlowManager::new(),
             auto_connection_manager: AutoConnectionManager::new(),
+            performance_optimizer: PerformanceOptimizer::new(),
+            last_update_time: Instant::now(),
+            frame_count: 0,
+            last_fps_update_time: Instant::now(),
         }
     }
 }
 
 impl App for PDSDApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // 记录更新开始时间
+        let update_start_time = Instant::now();
+        
+        // 更新帧率计算
+        self.frame_count += 1;
+        let now = Instant::now();
+        if now.duration_since(self.last_fps_update_time).as_secs() >= 1 {
+            let fps = self.frame_count as f32 / now.duration_since(self.last_fps_update_time).as_secs_f32();
+            self.performance_optimizer.update_fps(fps);
+            self.frame_count = 0;
+            self.last_fps_update_time = now;
+        }
         // 左侧组件库面板
             egui::SidePanel::left("node_palette").resizable(true).show(ctx, |ui| {
                 ui.heading("组件库");
@@ -138,15 +165,20 @@ impl App for PDSDApp {
                     "性能" => {
                         // 性能设置和统计
                         egui::ScrollArea::vertical().show(ui, |ui| {
-                            performance_settings_ui(ui);
+                            performance_settings_ui(ui, &mut self.performance_optimizer);
                             ui.add_space(20.0);
-                            performance_stats_ui(ui, &self.editor_state);
+                            performance_stats_ui(ui, &self.performance_optimizer);
                         });
                     },
                     "调试" => {
                         // 日志面板
                         egui::ScrollArea::vertical().show(ui, |ui| {
-                            log_panel_ui(ui, &self.debug_logger);
+                            // 显示调试控制面板
+                            self.show_debug_panel(ui);
+                            ui.add_space(20.0);
+                            
+                            // 显示日志面板
+                            log_panel_ui(ui, &LOGGER);
                         });
                     },
                     _ => {}
@@ -255,12 +287,19 @@ impl App for PDSDApp {
 
             // 创建一个可滚动区域
             egui::ScrollArea::both().show(ui, |ui| {
+                // 更新性能优化器的视口信息
+                let viewport = ui.ctx().input(|i| i.screen_rect);
+                self.performance_optimizer.update_viewport(viewport);
+                
                 // 调整容器大小
                 let (_id, response) = ui.allocate_space(egui::Vec2::new(
                     ui.available_width(),
                     ui.available_height() - 50.0, // 留出状态栏空间
                 ));
 
+                // 记录渲染开始时间
+                let render_start_time = Instant::now();
+                
                 // 绘制节点图编辑器
                 let node_responses = egui_node_graph::draw_graph_editor(
                     ui,
@@ -272,6 +311,9 @@ impl App for PDSDApp {
 
                 // 处理节点响应事件
                 self.handle_node_responses(node_responses);
+                
+                // 记录渲染时间
+                self.performance_optimizer.update_render_time(render_start_time.elapsed());
             });
 
             // 状态栏显示
@@ -280,8 +322,12 @@ impl App for PDSDApp {
                 ui.label(format!("节点数量: {}", self.editor_state.graph.nodes.len()));
                 ui.label(format!("连接数量: {}", self.editor_state.graph.connections.len()));
                 ui.label(format!("计算缓存: {}", self.calculation_cache.len()));
+                ui.label(format!("FPS: {:.1}", self.performance_optimizer.get_stats().current_fps));
             });
         });
+        
+        // 记录更新时间
+        self.performance_optimizer.update_update_time(update_start_time.elapsed());
     }
 }
 
@@ -374,11 +420,134 @@ impl PDSDApp {
         Ok(())
     }
 
+    // 调试面板UI
+    fn show_debug_panel(&mut self, ui: &mut egui::Ui) {
+        ui.group(|ui| {
+            ui.heading("调试信息面板");
+            
+            // 调试控制面板
+            ui.horizontal(|ui| {
+                // 日志记录控制
+                if ui.checkbox(&mut self.debug_logger.is_recording, "启用日志记录").changed() {
+                    log_info!(format!("日志记录已{}", 
+                        if self.debug_logger.is_recording { "开启" } else { "关闭" }));
+                }
+                
+                // 日志级别控制
+                ui.label("日志级别:");
+                if ui.button("错误").clicked() {
+                    self.debug_logger.set_level(crate::application::debug_logger::LogLevel::Error);
+                    log_info!("日志级别已设置为: 错误");
+                }
+                if ui.button("警告").clicked() {
+                    self.debug_logger.set_level(crate::application::debug_logger::LogLevel::Warning);
+                    log_info!("日志级别已设置为: 警告");
+                }
+                if ui.button("信息").clicked() {
+                    self.debug_logger.set_level(crate::application::debug_logger::LogLevel::Info);
+                    log_info!("日志级别已设置为: 信息");
+                }
+                if ui.button("调试").clicked() {
+                    self.debug_logger.set_level(crate::application::debug_logger::LogLevel::Debug);
+                    log_info!("日志级别已设置为: 调试");
+                }
+                if ui.button("追踪").clicked() {
+                    self.debug_logger.set_level(crate::application::debug_logger::LogLevel::Trace);
+                    log_info!("日志级别已设置为: 追踪");
+                }
+            });
+            
+            ui.separator();
+            
+            // 应用状态信息
+            egui::CollapsingHeader::new("应用状态信息")
+                .default_open(false)
+                .show(ui, |ui| {
+                    ui.label(format!("节点总数: {}", self.editor_state.graph.nodes.len()));
+                    ui.label(format!("连接总数: {}", self.editor_state.graph.connections.len()));
+                    ui.label(format!("计算缓存条目: {}", self.calculation_cache.len()));
+                    ui.label(format!("当前FPS: {:.1}", self.performance_optimizer.get_stats().current_fps));
+                    
+                    // 最近计算的节点信息
+                    if let Some(selected_node_id) = self.editor_state.selected_node() {
+                        ui.label(format!("选中节点: {:?}", selected_node_id));
+                    }
+                });
+            
+            ui.separator();
+            
+            // 调试操作按钮
+            ui.horizontal(|ui| {
+                if ui.button("清空所有日志").clicked() {
+                    LOGGER.clear_logs();
+                    self.debug_logger.clear();
+                    log_info!("所有日志已清空");
+                }
+                
+                if ui.button("导出日志").clicked() {
+                    // 这里应该打开文件对话框让用户选择保存位置
+                    // 目前使用一个固定的文件名作为示例
+                    let log_file = format!("pdsd_logs_{}.txt", chrono::Local::now().format("%Y%m%d_%H%M%S"));
+                    if let Ok(_) = LOGGER.export_logs(&log_file) {
+                        log_info!(format!("日志已导出到: {}", log_file));
+                        self.error_message = Some(format!("日志已导出到: {}", log_file));
+                    } else {
+                        log_error!("日志导出失败");
+                        self.error_message = Some("日志导出失败".to_string());
+                    }
+                }
+                
+                if ui.button("清除缓存").clicked() {
+                    self.calculation_cache.clear();
+                    self.performance_optimizer.clear_cache();
+                    log_info!("所有缓存已清除");
+                    self.error_message = Some("所有缓存已清除".to_string());
+                }
+            });
+        });
+    }
+    
+    // 记录节点执行情况
+    fn log_node_execution(&self, node_id: egui_node_graph::NodeId, inputs: &[UIValueType], 
+                        result: Option<UIValueType>, level: LogLevel) {
+        // 根据日志级别记录执行信息
+        let node_info = match self.editor_state.graph.nodes.get(node_id) {
+            Some(node) => format!("{} (ID: {:?})", node.label, node_id),
+            None => format!("节点ID: {:?}", node_id)
+        };
+        
+        let log_message = format!("执行节点: {}", node_info);
+        let input_data = format!("输入参数: {:?}", inputs);
+        let result_data = format!("执行结果: {:?}", result);
+        
+        // 使用全局日志系统记录
+        match level {
+            LogLevel::Error => LOGGER.error(&log_message, module_path!(), file!(), line!(), Some(format!("{}\n{}", input_data, result_data))),
+            LogLevel::Warning => LOGGER.warn(&log_message, module_path!(), file!(), line!(), Some(format!("{}\n{}", input_data, result_data))),
+            LogLevel::Info => LOGGER.info(&log_message, module_path!(), file!(), line!(), Some(format!("{}\n{}", input_data, result_data))),
+            LogLevel::Debug => LOGGER.debug(&log_message, module_path!(), file!(), line!(), Some(format!("{}\n{}", input_data, result_data))),
+            LogLevel::Trace => LOGGER.trace(&log_message, module_path!(), file!(), line!(), Some(format!("{}\n{}", input_data, result_data))),
+        }
+        
+        // 同时更新调试日志管理器
+        let full_message = format!("{}\n{}\n{}", log_message, input_data, result_data);
+        match level {
+            LogLevel::Error => self.debug_logger.error(&full_message),
+            LogLevel::Warning => self.debug_logger.warning(&full_message),
+            LogLevel::Info => self.debug_logger.info(&full_message),
+            LogLevel::Debug => self.debug_logger.debug(&full_message),
+            LogLevel::Trace => self.debug_logger.trace(&full_message),
+        }
+    }
+    
     // 运行电气系统计算
     fn run_calculations(&mut self) {
-        println!("运行电气系统计算");
-        // 更新调试日志
+        // 使用多级日志系统记录信息
+        log_info!("开始执行电气系统计算");
         self.debug_logger.info("开始执行电气系统计算");
+        
+        // 记录计算开始时间
+        let calc_start_time = Instant::now();
         
         // 1. 标记所有节点需要更新
         for node_id in self.editor_state.graph.nodes.keys() {
@@ -391,8 +560,13 @@ impl PDSDApp {
         // 3. 触发数据流向更新
         self.data_flow_manager.propagate_updates(&mut self.editor_state.graph);
         
+        // 记录计算耗时
+        let calc_duration = calc_start_time.elapsed();
+        log_info!(format!("电气系统计算完成，耗时: {:.2} ms", calc_duration.as_secs_f64() * 1000.0));
         self.debug_logger.info("电气系统计算完成");
-        // 在实际应用中，这里可能还需要处理计算结果或更新UI显示
+        
+        // 记录操作耗时到性能监控器
+        self.performance_optimizer.update_update_time(calc_duration);
     }
 
     // 生成报告
@@ -646,6 +820,8 @@ impl PDSDApp {
 
     // 执行图计算 - 利用数据流向管理器优化计算顺序和缓存
     fn execute_graph(&mut self) {
+        log_debug!("开始执行图计算");
+        
         // 使用数据流向管理器执行拓扑排序和更新
         // 这里我们复用数据流向管理器中的拓扑排序结果，避免重复计算
         
@@ -654,39 +830,66 @@ impl PDSDApp {
         
         // 2. 按顺序执行每个节点的计算
         for node_id in execution_order {
-            self.execute_node_calculation(node_id);
+            // 检查是否需要更新此节点（使用性能优化器进行交互节流）
+            if self.performance_optimizer.should_process_interaction(&format!("node_calc_{:?}", node_id)) {
+                self.execute_node_calculation(node_id);
+            }
         }
+        
+        log_debug!("图计算执行完成");
     }
     
     // 执行单个节点的计算
     fn execute_node_calculation(&mut self, node_id: egui_node_graph::NodeId) {
+        // 记录节点计算开始
+        log_trace!(format!("开始计算节点: {:?}", node_id));
+        self.debug_logger.trace(&format!("开始计算节点: {:?}", node_id));
+        
+        // 收集输入参数
+        let mut inputs = Vec::new();
         if let Some(node) = self.editor_state.graph.nodes.get(node_id) {
+            // 记录计算开始时间
+            let calc_start_time = Instant::now();
+            
             // 根据节点类型执行不同的计算逻辑
             match &node.user_data {
                 PowerGraphNode::CircuitNode(circuit) => {
                     // 执行回路计算
-                    // 注意：在实际应用中，应该修改circuit的可变引用
-                    // 这里简化处理，仅记录日志
-                    self.debug_logger.info(&format!("计算回路节点: {}, 功率: {:.2}kW", 
+                    log_debug!(format!("计算回路节点: {}, 功率: {:.2}kW", 
+                        circuit.name, circuit.power));
+                    self.debug_logger.debug(&format!("计算回路节点: {}, 功率: {:.2}kW", 
                         circuit.name, circuit.power));
                 },
                 PowerGraphNode::DistributionBoxNode(box_node) => {
                     // 执行配电箱计算
-                    self.debug_logger.info(&format!("计算配电箱节点: {}, 回路数: {}", 
+                    log_debug!(format!("计算配电箱节点: {}, 回路数: {}", 
+                        box_node.name, box_node.circuits.len()));
+                    self.debug_logger.debug(&format!("计算配电箱节点: {}, 回路数: {}", 
                         box_node.name, box_node.circuits.len()));
                 },
                 PowerGraphNode::TrunkLineNode(system_node) => {
                     // 执行干线系统图计算
-                    self.debug_logger.info(&format!("计算干线系统图节点: {}, 类型: {:?}", 
+                    log_debug!(format!("计算干线系统图节点: {}, 类型: {:?}", 
+                        system_node.name, system_node.system_type));
+                    self.debug_logger.debug(&format!("计算干线系统图节点: {}, 类型: {:?}", 
                         system_node.name, system_node.system_type));
                 },
                 _ => {
                     // 其他类型节点的计算
+                    log_debug!(format!("计算其他类型节点: {:?}", node_id));
+                    self.debug_logger.debug(&format!("计算其他类型节点: {:?}", node_id));
                 }
             }
             
+            // 记录计算耗时
+            let calc_duration = calc_start_time.elapsed();
+            log_trace!(format!("节点 {:?} 计算耗时: {:.2} ms", node_id, calc_duration.as_secs_f64() * 1000.0));
+            
             // 3. 从数据流向管理器获取计算结果并更新本地缓存
             if let Some(node_cache) = self.data_flow_manager.get_node_cache(node_id) {
+                // 记录缓存条目数
+                log_trace!(format!("节点 {:?} 获取到 {} 个缓存条目", node_id, node_cache.len()));
+                
                 // 将数据流向管理器中的计算结果同步到应用的计算缓存
                 for (key, value) in node_cache {
                     // 转换缓存键格式
@@ -696,16 +899,25 @@ impl PDSDApp {
                     match value {
                         ElectricValueType::Float(val) => {
                             self.calculation_cache.insert(cache_key, *val);
+                            log_trace!(format!("缓存节点 {:?} 输出 {} = {:.2}", node_id, key, val));
                         },
                         ElectricValueType::Integer(val) => {
                             self.calculation_cache.insert(cache_key, *val as f64);
+                            log_trace!(format!("缓存节点 {:?} 输出 {} = {}", node_id, key, val));
                         },
                         _ => {
                             // 不处理非数值类型的缓存
+                            log_trace!(format!("忽略节点 {:?} 非数值类型输出: {}", node_id, key));
                         }
                     }
                 }
             }
+            
+            // 记录节点执行情况
+            self.log_node_execution(node_id, &inputs, Some(UIValueType::Float(0.0)), LogLevel::Debug);
+        } else {
+            log_warn!(format!("尝试计算不存在的节点: {:?}", node_id));
+            self.debug_logger.warning(&format!("尝试计算不存在的节点: {:?}", node_id));
         }
     }
     

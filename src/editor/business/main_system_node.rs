@@ -8,9 +8,12 @@ use std::borrow::Cow;
 
 use egui::{Ui, Widget};
 use egui_node_graph::{Graph, NodeId, NodeTemplateTrait};
+use crate::editor::ui::debug_tools::log_info;
+use crate::editor::business::{BoxData as DistributionBoxNode};
 
 use crate::core_lib::data_types::{ElectricDataType, ElectricValueType};
 use crate::editor::business::EditorState;
+use crate::editor::business::distribution_box_parameters::{DistributionBoxNode, IncomingType};
 
 /// 干线系统图类型
 #[derive(Debug, Clone, PartialEq)]
@@ -145,29 +148,204 @@ pub struct MainSystemNodeUI {
 }
 
 impl MainSystemNodeUI {
-    /// 自动映射功能
-    pub fn auto_map_distribution_boxes(&mut self, boxes: &[Box<i32>]) -> Vec<SystemDiagram> {
-        // 这里简化处理，实际实现应该接收配电箱数据
+    /// 自动生成连线功能 - 根据配电箱进线类型自动生成连接
+    /// 
+    /// # 参数
+    /// * `distribution_boxes` - 配电箱节点数据向量
+    /// 
+    /// # 返回值
+    /// 返回生成的系统图
+    pub fn auto_generate_connections(&mut self, distribution_boxes: Vec<&DistributionBoxNode>) -> SystemDiagram {
+        let mut diagram = SystemDiagram::new("自动生成的配电干线系统图".to_string());
+        
+        // 创建母线
+        let main_busbar = diagram.add_component(ComponentType::Busbar, "主母线".to_string());
+        
+        // 创建备用电源
+        let backup_power = diagram.add_component(ComponentType::PowerSource, "备用电源".to_string());
+        
+        // 按照楼层对配电箱进行排序
+        let mut sorted_boxes = distribution_boxes.to_vec();
+        sorted_boxes.sort_by(|a, b| a.floor.cmp(&b.floor));
+        
+        // 为每个配电箱生成连线
+        for box_data in &sorted_boxes {
+            // 添加配电箱组件
+            let box_component = diagram.add_component(
+                ComponentType::DistributionBox,
+                format!("{}\n楼层:{}\n功率:{:.2}kW\n电流:{:.2}A", 
+                        box_data.name, box_data.floor, box_data.total_power, box_data.total_current)
+            );
+            
+            // 判断配电箱进线类型
+            let incoming_type = box_data.determine_incoming_type();
+            
+            // 根据进线类型生成连线
+            match incoming_type {
+                IncomingType::SinglePower => {
+                    // 单电源直接连接到主母线
+                    diagram.add_connection(main_busbar, box_component);
+                    diagram.set_connection_type(main_busbar, box_component, ConnectionType::SinglePower);
+                    log_info!("为配电箱'{}'添加单电源连接", box_data.name);
+                },
+                IncomingType::DualPower => {
+                    // 双电源连接到主母线和备用电源
+                    diagram.add_connection(main_busbar, box_component);
+                    diagram.set_connection_type(main_busbar, box_component, ConnectionType::DualPower);
+                    
+                    diagram.add_connection(backup_power, box_component);
+                    diagram.set_connection_type(backup_power, box_component, ConnectionType::DualPower);
+                    log_info!("为配电箱'{}'添加双电源连接", box_data.name);
+                },
+            }
+        }
+        
+        // 如果启用自动布局，则进行自动布局
+        if self.data.auto_layout {
+            self.auto_layout_diagram(&mut diagram);
+        }
+        
+        diagram
+    }
+    
+    /// 自动映射功能 - 使用自动连线生成算法
+    pub fn auto_map_distribution_boxes(&mut self, distribution_boxes: &[&DistributionBoxNode]) -> Vec<SystemDiagram> {
         let mut diagrams = Vec::new();
 
         // 生成各类系统图
         for system_type in &self.data.systems {
             match system_type {
                 MainSystemType::PowerDistribution => {
-                    let diagram = self.generate_power_distribution_diagram();
+                    // 对于配电干线图，使用自动连线生成功能
+                    log_info!("正在生成配电干线系统图，包含{}个配电箱", distribution_boxes.len());
+                    let diagram = self.auto_generate_connections(
+                        distribution_boxes.iter().copied().collect()
+                    );
                     diagrams.push(diagram);
+                    log_info!("配电干线系统图生成完成");
                 },
                 MainSystemType::EnergyMonitoring => {
-                    let diagram = self.generate_energy_monitoring_diagram();
+                    // 为能耗监测干线图添加自动连线逻辑
+                    log_info!("正在生成能耗监测干线图");
+                    // 过滤出包含能耗监测模块的配电箱
+                    let energy_boxes: Vec<_> = distribution_boxes
+                        .iter()
+                        .filter(|box_node| box_node.modules.contains(&"能耗监测".to_string()))
+                        .copied()
+                        .collect();
+                    
+                    log_info!("找到{}个包含能耗监测模块的配电箱", energy_boxes.len());
+                    let diagram = if !energy_boxes.is_empty() {
+                        // 如果有带能耗监测模块的配电箱，为它们生成专用连接
+                        let mut diagram = SystemDiagram::new("能耗监测干线系统图".to_string());
+                        let busbar = diagram.add_component(ComponentType::Busbar, "监测总线".to_string());
+                        
+                        // 为每个带能耗监测模块的配电箱创建连接
+                        for box_data in &energy_boxes {
+                            let box_component = diagram.add_component(
+                                ComponentType::DistributionBox,
+                                format!("{}\n楼层:{}\n功率:{:.2}kW", 
+                                        box_data.name, box_data.floor, box_data.total_power)
+                            );
+                            diagram.add_connection(busbar, box_component);
+                            diagram.set_connection_type(busbar, box_component, ConnectionType::Monitoring);
+                            log_info!("为配电箱'{}'添加能耗监测连接", box_data.name);
+                        }
+                        
+                        diagram
+                    } else {
+                        // 否则使用默认图表
+                        self.generate_energy_monitoring_diagram()
+                    };
+                    
+                    if self.data.auto_layout {
+                        self.auto_layout_diagram(&mut diagram);
+                    }
+                    
                     diagrams.push(diagram);
+                    log_info!("能耗监测干线图生成完成");
                 },
                 MainSystemType::ElectricalFireMonitoring => {
-                    let diagram = self.generate_electrical_fire_monitoring_diagram();
+                    // 为电气火灾监控干线图添加自动连线逻辑
+                    log_info!("正在生成电气火灾监控干线图");
+                    // 过滤出包含电气火灾监控模块的配电箱
+                    let fire_boxes: Vec<_> = distribution_boxes
+                        .iter()
+                        .filter(|box_node| box_node.modules.contains(&"电气火灾监控".to_string()))
+                        .copied()
+                        .collect();
+                    
+                    log_info!("找到{}个包含电气火灾监控模块的配电箱", fire_boxes.len());
+                    let diagram = if !fire_boxes.is_empty() {
+                        // 如果有带电气火灾监控模块的配电箱，为它们生成专用连接
+                        let mut diagram = SystemDiagram::new("电气火灾监控干线系统图".to_string());
+                        let busbar = diagram.add_component(ComponentType::Busbar, "监控总线".to_string());
+                        
+                        // 为每个带电气火灾监控模块的配电箱创建连接
+                        for box_data in &fire_boxes {
+                            let box_component = diagram.add_component(
+                                ComponentType::DistributionBox,
+                                format!("{}\n楼层:{}\n功率:{:.2}kW", 
+                                        box_data.name, box_data.floor, box_data.total_power)
+                            );
+                            diagram.add_connection(busbar, box_component);
+                            diagram.set_connection_type(busbar, box_component, ConnectionType::FireMonitoring);
+                            log_info!("为配电箱'{}'添加电气火灾监控连接", box_data.name);
+                        }
+                        
+                        diagram
+                    } else {
+                        // 否则使用默认图表
+                        self.generate_electrical_fire_monitoring_diagram()
+                    };
+                    
+                    if self.data.auto_layout {
+                        self.auto_layout_diagram(&mut diagram);
+                    }
+                    
                     diagrams.push(diagram);
+                    log_info!("电气火灾监控干线图生成完成");
                 },
                 MainSystemType::FirePowerMonitoring => {
-                    let diagram = self.generate_fire_power_monitoring_diagram();
+                    // 为消防电源监测干线图添加自动连线逻辑
+                    log_info!("正在生成消防电源监测干线图");
+                    // 过滤出包含消防电源监测模块的配电箱
+                    let fire_power_boxes: Vec<_> = distribution_boxes
+                        .iter()
+                        .filter(|box_node| box_node.modules.contains(&"消防电源监测".to_string()))
+                        .copied()
+                        .collect();
+                    
+                    log_info!("找到{}个包含消防电源监测模块的配电箱", fire_power_boxes.len());
+                    let diagram = if !fire_power_boxes.is_empty() {
+                        // 如果有带消防电源监测模块的配电箱，为它们生成专用连接
+                        let mut diagram = SystemDiagram::new("消防电源监测干线系统图".to_string());
+                        let busbar = diagram.add_component(ComponentType::Busbar, "消防总线".to_string());
+                        
+                        // 为每个带消防电源监测模块的配电箱创建连接
+                        for box_data in &fire_power_boxes {
+                            let box_component = diagram.add_component(
+                                ComponentType::DistributionBox,
+                                format!("{}\n楼层:{}\n功率:{:.2}kW", 
+                                        box_data.name, box_data.floor, box_data.total_power)
+                            );
+                            diagram.add_connection(busbar, box_component);
+                            diagram.set_connection_type(busbar, box_component, ConnectionType::FirePowerMonitoring);
+                            log_info!("为配电箱'{}'添加消防电源监测连接", box_data.name);
+                        }
+                        
+                        diagram
+                    } else {
+                        // 否则使用默认图表
+                        self.generate_fire_power_monitoring_diagram()
+                    };
+                    
+                    if self.data.auto_layout {
+                        self.auto_layout_diagram(&mut diagram);
+                    }
+                    
                     diagrams.push(diagram);
+                    log_info!("消防电源监测干线图生成完成");
                 },
             }
         }
@@ -178,29 +356,43 @@ impl MainSystemNodeUI {
     }
 
     /// 生成配电干线系统图
-    fn generate_power_distribution_diagram(&self) -> SystemDiagram {
-        let mut diagram = SystemDiagram::new("配电干线系统图".to_string());
+    fn generate_power_distribution_diagram(&self, distribution_boxes: Vec<&DistributionBoxNode>) -> SystemDiagram {
+        // 如果提供了配电箱数据，使用自动连线生成功能
+        if !distribution_boxes.is_empty() {
+            log_info!("使用自动连线生成功能创建配电干线系统图");
+            let mut diagram = self.auto_generate_connections(distribution_boxes);
+            
+            if self.data.auto_layout {
+                self.auto_layout_diagram(&mut diagram);
+            }
+            
+            diagram
+        } else {
+            // 如果没有提供配电箱数据，创建示例系统图
+            log_info!("创建示例配电干线系统图");
+            let mut diagram = SystemDiagram::new("配电干线系统图".to_string());
 
-        // 创建母线
-        let busbar = diagram.add_component(ComponentType::Busbar, "主母线".to_string());
+            // 创建母线
+            let busbar = diagram.add_component(ComponentType::Busbar, "主母线".to_string());
 
-        // 创建一个示例配电箱
-        let box_component = diagram.add_component(
-            ComponentType::DistributionBox,
-            "示例配电箱\n楼层:1\n功率:10.00kW\n电流:15.20A".to_string()
-        );
+            // 创建一个示例配电箱
+            let box_component = diagram.add_component(
+                ComponentType::DistributionBox,
+                "示例配电箱\n楼层:1\n功率:10.00kW\n电流:15.20A".to_string()
+            );
 
-        // 添加连线
-        diagram.add_connection(busbar, box_component);
+            // 添加连线
+            diagram.add_connection(busbar, box_component);
 
-        // 设置连接类型为单电源
-        diagram.set_connection_type(busbar, box_component, ConnectionType::SinglePower);
+            // 设置连接类型为单电源
+            diagram.set_connection_type(busbar, box_component, ConnectionType::SinglePower);
 
-        if self.data.auto_layout {
-            self.auto_layout_diagram(&mut diagram);
+            if self.data.auto_layout {
+                self.auto_layout_diagram(&mut diagram);
+            }
+
+            diagram
         }
-
-        diagram
     }
 
     /// 生成能耗监测干线系统图
@@ -331,7 +523,7 @@ impl MainSystemNodeUI {
         // 生成系统图按钮
         if ui.button("生成系统图").clicked() {
             // 这里简化处理，实际应该从输入获取配电箱数据
-            let dummy_boxes: Vec<Box<i32>> = Vec::new();
+            let dummy_boxes: Vec<&DistributionBoxNode> = Vec::new();
             self.auto_map_distribution_boxes(&dummy_boxes);
             return Some(MainSystemResponse::DiagramGenerated);
         }

@@ -110,6 +110,25 @@ impl CircuitInfo {
         
         Ok(())
     }
+
+    /// 自动识别配电箱进线类型
+    /// 
+    /// # 返回值
+    /// 返回识别出的进线类型
+    pub fn determine_incoming_type(&self) -> IncomingType {
+        // 检查modules列表中是否包含"双电源切换"模块
+        // 为了提高鲁棒性，使用模糊匹配
+        for module in &self.modules {
+            if module.contains("双电源切换") || 
+               module.contains("双电源") || 
+               module.contains("duplex power") || 
+               module.contains("dual power") {
+                return IncomingType::DualPower;
+            }
+        }
+        // 默认返回单电源
+        IncomingType::SinglePower
+    }
 }
 
 /// 配电箱节点数据结构体
@@ -133,6 +152,13 @@ pub struct DistributionBoxNode {
     pub phase_loads: [f64; 3],
     /// 管理的回路信息列表
     pub circuits: Vec<CircuitInfo>,
+}
+
+/// 进线类型枚举
+#[derive(Debug, Clone, PartialEq)]
+pub enum IncomingType {
+    SinglePower, // 单电源
+    DualPower,   // 双电源
 }
 
 impl Default for DistributionBoxNode {
@@ -165,6 +191,20 @@ impl DistributionBoxNode {
             name,
             floor,
             ..Default::default()
+        }
+    }
+    
+    /// 判断进线类型
+    /// 
+    /// 根据配电箱包含的模块判断其进线类型
+    /// 
+    /// # 返回值
+    /// 返回判断的进线类型
+    pub fn determine_incoming_type(&self) -> IncomingType {
+        if self.modules.contains(&"双电源切换".to_string()) {
+            IncomingType::DualPower
+        } else {
+            IncomingType::SinglePower
         }
     }
     

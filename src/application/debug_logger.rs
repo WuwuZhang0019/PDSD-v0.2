@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::sync::mpsc::{Sender, Receiver, channel};
 use std::thread;
 use std::time::Duration;
+use chrono::Local;
 use egui_node_graph::{NodeId, InputId, OutputId};
 use crate::editor::UIValueType;
 
@@ -30,13 +31,12 @@ pub struct DebugLogger {
     pub logs: Vec<LogEntry>,
     pub max_logs: usize,
     pub current_level: LogLevel,
-    is_recording: bool,
-}
+    pub is_recording: bool,
+34| }
 
 impl Default for DebugLogger {
     fn default() -> Self {
         let (sender, receiver) = channel();
-        
         Self {
             log_sender: sender,
             log_receiver: receiver,
@@ -138,7 +138,26 @@ impl DebugLogger {
     
     /// 开始/停止记录日志
     pub fn set_recording(&mut self, recording: bool) {
+        let old_state = self.is_recording;
         self.is_recording = recording;
+        
+        // 记录状态变更
+        if old_state != recording {
+            let message = if recording {
+                "开始记录日志"
+            } else {
+                "停止记录日志"
+            };
+            
+            // 即使关闭了记录，仍然记录状态变更信息
+            let entry = LogEntry {
+                level: LogLevel::Info,
+                message: message.to_string(),
+                timestamp: Local::now(),
+            };
+            
+            let _ = self.log_sender.send(entry);
+        }
     }
 }
 

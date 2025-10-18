@@ -318,6 +318,7 @@ impl NodeDataTrait for DistributionBoxNodeUI {
             if self.data.circuits.len() > 5 {
                 ui.label(format!("... 还有 {} 个回路", self.data.circuits.len() - 5));
             }
+        }
         
         // 显示错误信息
         if !self.errors.is_empty() {
@@ -327,73 +328,149 @@ impl NodeDataTrait for DistributionBoxNodeUI {
                 ui.label(egui::RichText::new(format!("- {}", error)).color(Color32::RED));
             }
         }
-        
-        responses
+       }
+        }
+    }
+}
+
+// 实现UserResponseTrait接口
+impl UserResponseTrait for DistributionBoxResponse {}
+
+impl DistributionBoxResponse {
+    /// 应用响应到节点图
+    pub fn apply(
+        self,
+        node_id: NodeId,
+        graph: &mut Graph<DistributionBoxNodeUI, ElectricDataType, ElectricValueType>,
+        user_state: &mut EditorState,
+    ) {
+        match self {
+            DistributionBoxResponse::NodeUpdated => {
+                // 节点已更新，可能需要刷新UI
+            },
+            DistributionBoxResponse::ParameterChanged(name, value) => {
+                // 参数变更处理
+            },
+            DistributionBoxResponse::CircuitAdded(circuit) => {
+                // 添加回路
+                if let Some(node) = graph.nodes.get_mut(node_id) {
+                    node.user_data.add_circuit(circuit);
+                }
+            },
+            DistributionBoxResponse::CircuitRemoved(circuit_id) => {
+                // 移除回路
+                if let Some(node) = graph.nodes.get_mut(node_id) {
+                    node.user_data.remove_circuit(&circuit_id);
+                }
+            },
+            DistributionBoxResponse::CircuitUpdated(circuit) => {
+                // 更新回路
+                if let Some(node) = graph.nodes.get_mut(node_id) {
+                    node.user_data.update_circuit(circuit);
+                }
+            },
+            DistributionBoxResponse::CalculationCompleted => {
+                // 计算完成
+            },
+            DistributionBoxResponse::Error(err) => {
+                // 错误处理
+                if let Some(node) = graph.nodes.get_mut(node_id) {
+                    node.user_data.errors.push(err.to_string());
+                }
+            },
+        }
+    }
+}
+
+// 单元测试
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_distribution_box_node_creation() {
+        let node = DistributionBoxNodeUI::default();
+        assert_eq!(node.data.name, "新建配电箱");
+        assert_eq!(node.data.floor, 1);
+        assert_eq!(node.data.circuits.len(), 0);
+        assert_eq!(node.data.total_power, 0.0);
+        assert_eq!(node.data.total_current, 0.0);
+        assert_eq!(node.data.incoming_current, 0.0);
+        assert!(node.errors.is_empty());
     }
     
-    /// 顶部栏UI，显示节点名称
-    fn top_bar_ui(
-        &self,
-        ui: &mut egui::Ui,
-        _node_id: NodeId,
-        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
-        _user_state: &mut Self::UserState,
-    ) -> Vec<NodeResponse<Self::Response, Self>> {
-        let mut responses = Vec::new();
+    #[test]
+    fn test_add_circuit() {
+        let mut node = DistributionBoxNodeUI::default();
+        let circuit = CircuitInfo::new(
+            "circuit_1".to_string(),
+            "测试回路1".to_string(),
+            5.0,
+            10.0
+        );
         
-        ui.label(self.get_title());
+        let result = node.add_circuit(circuit);
         
-        responses
+        assert!(result);
+        assert_eq!(node.data.circuits.len(), 1);
+        assert_eq!(node.data.circuits[0].name, "测试回路1");
+        assert_eq!(node.data.circuits[0].power, 5.0);
+        assert!(node.errors.is_empty());
     }
     
-    /// 标题栏颜色
-    fn titlebar_color(
-        &self,
-        _ui: &egui::Ui,
-        _node_id: NodeId,
-        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
-        _user_state: &mut Self::UserState,
-    ) -> Option<Color32> {
-        Some(Color32::from_rgb(200, 150, 100)) // 棕色系表示配电箱节点
+    #[test]
+    fn test_update_name() {
+        let mut node = DistributionBoxNodeUI::default();
+        node.update_name("测试配电箱".to_string());
+        
+        assert_eq!(node.data.name, "测试配电箱");
+        assert_eq!(node.get_title(), "配电箱: 测试配电箱");
     }
     
-    /// 输出UI
-    fn output_ui(
-        &self,
-        ui: &mut egui::Ui,
-        _node_id: NodeId,
-        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
-        _user_state: &mut Self::UserState,
-        param_name: &str,
-    ) -> Vec<NodeResponse<Self::Response, Self>> {
-        let mut responses = Vec::new();
+    #[test]
+    fn test_recalculate() {
+        let mut node = DistributionBoxNodeUI::default();
         
-        ui.horizontal(|ui| {
-            ui.label(param_name);
-            
-            // 显示对应的值
-            match param_name {
-                "总电流" => {
-                    ui.label(format!("({:.2}A)", self.data.total_current));
-                },
-                "总功率" => {
-                    ui.label(format!("({:.2}kW)", self.data.total_power));
-                },
-                "进线电流" => {
-                    ui.label(format!("({:.0}A)", self.data.incoming_current));
-                },
-                "配电箱数据" => {
-                    ui.label(format!("({}回路)", self.data.circuits.len()));
-                },
-                _ => {},
-            }
-        });
+        // 添加几个回路
+        let circuit1 = CircuitInfo::new(
+            "circuit_1".to_string(),
+            "回路1".to_string(),
+            3.0,
+            6.0
+        );
+        let circuit2 = CircuitInfo::new(
+            "circuit_2".to_string(),
+            "回路2".to_string(),
+            4.0,
+            8.0
+        );
+        let circuit3 = CircuitInfo::new(
+            "circuit_3".to_string(),
+            "回路3".to_string(),
+            5.0,
+            10.0
+        );
         
-        responses
+        node.add_circuit(circuit1);
+        node.add_circuit(circuit2);
+        node.add_circuit(circuit3);
+        
+        // 手动触发重新计算
+        node.recalculate();
+        
+        // 验证计算结果
+        assert_eq!(node.data.circuits.len(), 3);
+        assert_eq!(node.data.total_power, 12.0); // 3+4+5=12kW
+        assert!(node.data.total_current > 0.0);
+        assert!(node.data.incoming_current >= node.data.total_current);
+        assert!(node.errors.is_empty());
+        
+        // 验证编号
+        let mut numbers: Vec<u32> = node.data.circuits.iter().map(|c| c.number).collect();
+        numbers.sort();
+        assert_eq!(numbers, vec![1, 2, 3]);
     }
-    
-    /// 参数更新处理
-    fn update_params(
+}
         &mut self,
         params: Self::ValueType,
         user_state: &mut Self::UserState,
@@ -460,39 +537,6 @@ impl NodeDataTrait for DistributionBoxNodeUI {
                 Err(ElectricDataType::String("无效的输出端口索引".to_string()))
             }
         }
-    }
-            let display_circuits = if self.data.circuits.len() > 5 {
-                &self.data.circuits[0..5]
-            } else {
-                &self.data.circuits
-            };
-            
-            for circuit in display_circuits {
-                ui.horizontal(|ui| {
-                    ui.label(format!("#{:02} ", circuit.number));
-                    ui.label(format!("{} ", circuit.name));
-                    ui.label(format!("{:.2}kW ", circuit.power));
-                    if let Some(phase) = circuit.phase {
-                        ui.label(format!("(相: {})", phase));
-                    }
-                });
-            }
-            
-            if self.data.circuits.len() > 5 {
-                ui.label(format!("... 还有 {} 个回路", self.data.circuits.len() - 5));
-            }
-        }
-        
-        // 显示错误信息
-        if !self.errors.is_empty() {
-            ui.separator();
-            ui.label(egui::RichText::new("错误:").color(Color32::RED));
-            for error in &self.errors {
-                ui.label(egui::RichText::new(format!("- {}", error)).color(Color32::RED));
-            }
-        }
-        
-        responses
     }
     
     /// 顶部栏UI，显示节点名称

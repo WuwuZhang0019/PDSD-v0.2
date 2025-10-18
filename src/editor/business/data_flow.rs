@@ -1,6 +1,12 @@
-use std::collections::{HashSet, HashMap}; use egui_node_graph::{NodeId, Graph}; use crate::core_lib::data_types::{ElectricNodeData, ElectricDataType, ElectricValueType}; use super::circuit_node::CircuitNodeData; use super::distribution_box_node::DistributionBoxNodeData; use super::main_system_node::MainSystemNodeData; 
+use std::collections::{HashSet, HashMap};
+use egui_node_graph::{NodeId, Graph};
+use crate::core_lib::data_types::{ElectricNodeData, ElectricDataType, ElectricValueType};
+use super::circuit_node::CircuitNodeData;
+use super::distribution_box_node::DistributionBoxNodeData;
+use super::main_system_node::MainSystemNodeData;
 
-/// 可更新节点的接口 pub trait UpdatableNode {
+/// 可更新节点的接口
+pub trait UpdatableNode {
     /// 更新节点数据
     fn update(&mut self, cache: &mut HashMap<String, ElectricValueType>) -> HashMap<String, ElectricValueType>;
     
@@ -8,13 +14,17 @@ use std::collections::{HashSet, HashMap}; use egui_node_graph::{NodeId, Graph}; 
     fn get_output(&self, key: &str) -> Option<&ElectricValueType>;
 }
 
-/// 电力系统图应用中负责数据流向和实时更新的管理器 pub struct DataFlowManager {
-    // 更新状态    nodes_to_update: HashSet<NodeId>,
-    // 计算缓存    calculation_cache: HashMap<NodeId, HashMap<String, ElectricValueType>>,
+/// 电力系统图应用中负责数据流向和实时更新的管理器
+pub struct DataFlowManager {
+    // 更新状态
+    nodes_to_update: HashSet<NodeId>,
+    // 计算缓存
+    calculation_cache: HashMap<NodeId, HashMap<String, ElectricValueType>>,
 }
 
 impl DataFlowManager {
-    /// 创建新的数据流向管理器    pub fn new() -> Self {
+    /// 创建新的数据流向管理器
+    pub fn new() -> Self {
         Self {
             nodes_to_update: HashSet::new(),
             calculation_cache: HashMap::new(),

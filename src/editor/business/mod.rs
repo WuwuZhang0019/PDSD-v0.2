@@ -35,6 +35,11 @@ pub use main_system_template::MainSystemTemplate;
 pub use data_flow::{DataFlowManager, UpdatableNode};
 pub use auto_connection::{IncomingType, ConnectionType, ConnectionInfo, AutoConnectionGenerator, AutoConnectionManager, derive_equipment_type};
 
+// 自动识别与连线生成功能
+pub mod auto_connection_example;
+#[cfg(test)]
+pub mod auto_connection_tests;
+
 /// 业务逻辑模块初始化函数
 pub fn initialize() {
     // 初始化日志或其他全局资源
