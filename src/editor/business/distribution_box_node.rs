@@ -328,8 +328,6 @@ impl NodeDataTrait for DistributionBoxNodeUI {
                 ui.label(egui::RichText::new(format!("- {}", error)).color(Color32::RED));
             }
         }
-       }
-        }
     }
 }
 
@@ -471,72 +469,54 @@ mod tests {
         assert_eq!(numbers, vec![1, 2, 3]);
     }
 }
-        &mut self,
-        params: Self::ValueType,
-        user_state: &mut Self::UserState,
-    ) -> Result<(), Self::DataType> {
-        match params {
-            ElectricValueType::String(value) => {
-                // 假设字符串参数是名称
-                self.update_name(value);
-            },
-            ElectricValueType::Float(value) => {
-                // 假设浮点参数是楼层号（向上取整）
-                self.update_floor(value.ceil() as u32);
-            },
-            _ => {},
-        }
-        
-        Ok(())
-    }
+
+// 继续实现NodeDataTrait接口的方法
+impl NodeDataTrait for DistributionBoxNodeUI {
+    type Response = DistributionBoxResponse;
+    type UserState = EditorState;
+    type DataType = ElectricDataType;
+    type ValueType = ElectricValueType;
     
-    /// 输入数据处理
-    fn input_data(
-        &mut self,
-        input_idx: usize,
-        data: &Self::DataType,
-        user_state: &mut Self::UserState,
-    ) -> Result<(), Self::DataType> {
-        // 处理来自回路节点的输入数据
-        if let ElectricDataType::CircuitData = data {
-            // 这里简化处理，实际应该根据data的内容创建CircuitInfo
-            // 并添加到配电箱中
-            // 例如：
-            // let circuit_info = CircuitInfo::new(...);
-            // self.add_circuit(circuit_info);
-        }
-        
-        Ok(())
-    }
-    
-    /// 输出数据获取
-    fn output_data(
+    /// 节点底部UI，显示计算结果和错误信息
+    fn bottom_ui(
         &self,
-        output_idx: usize,
-        user_state: &mut Self::UserState,
-    ) -> Result<Self::DataType, Self::DataType> {
-        match output_idx {
-            0 => {
-                // 输出配电箱数据
-                Ok(ElectricDataType::DistributionBoxData(self.to_data_map()))
-            },
-            1 => {
-                // 输出总电流
-                Ok(ElectricDataType::Current(self.data.total_current))
-            },
-            2 => {
-                // 输出总功率
-                Ok(ElectricDataType::Power(self.data.total_power))
-            },
-            3 => {
-                // 输出进线电流（保护设备电流整定值）
-                Ok(ElectricDataType::Current(self.data.incoming_current))
-            },
-            _ => {
-                // ElectricDataType没有Error成员，这里使用String作为错误指示
-                Err(ElectricDataType::String("无效的输出端口索引".to_string()))
-            }
+        ui: &mut egui::Ui,
+        _node_id: NodeId,
+        _graph: &Graph<Self, Self::DataType, Self::ValueType>,
+        _user_state: &mut Self::UserState,
+    ) -> Vec<NodeResponse<Self::Response, Self>> {
+        let mut responses = Vec::new();
+        
+        // 显示基本信息
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.label("楼层: ");
+            ui.label(format!("{}", self.data.floor));
+        });
+        
+        // 显示计算结果
+        if !self.data.circuits.is_empty() {
+            ui.separator();
+            ui.label("计算结果:");
+            ui.horizontal(|ui| {
+                ui.label("回路数量: ");
+                ui.label(format!("{}", self.data.circuits.len()));
+            });
+            ui.horizontal(|ui| {
+                ui.label("总功率: ");
+                ui.label(egui::RichText::new(format!("{:.2} kW", self.data.total_power)).color(Color32::GREEN));
+            });
+            ui.horizontal(|ui| {
+                ui.label("总电流: ");
+                ui.label(egui::RichText::new(format!("{:.2} A", self.data.total_current)).color(Color32::GREEN));
+            });
+            ui.horizontal(|ui| {
+                ui.label("进线电流: ");
+                ui.label(egui::RichText::new(format!("{:.0} A", self.data.incoming_current)).color(Color32::BLUE));
+            });
         }
+        
+        responses
     }
     
     /// 顶部栏UI，显示节点名称
@@ -553,6 +533,7 @@ mod tests {
         
         responses
     }
+}
     
     /// 标题栏颜色
     fn titlebar_color(
