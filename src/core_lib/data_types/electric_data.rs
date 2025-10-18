@@ -111,32 +111,25 @@ impl LayingArea {
 
 /// 相序枚举
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PhaseSequence {
+pub enum Phase {
     L1,
     L2,
     L3,
-    L1L2L3,
+    ThreePhase, // 三相(空值表示)
+
 }
 
-impl PhaseSequence {
+impl Phase {
     pub fn to_str(&self) -> &'static str {
         match self {
-            PhaseSequence::L1 => "L1",
-            PhaseSequence::L2 => "L2",
-            PhaseSequence::L3 => "L3",
-            PhaseSequence::L1L2L3 => "L1L2L3",
+            Phase::L1 => "L1",
+            Phase::L2 => "L2",
+            Phase::L3 => "L3",
+            Phase::ThreePhase => " ",
         }
     }
 }
 
-/// 相序
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Phase {
-    L1,    // A相
-    L2,    // B相
-    L3,    // C相
-    ThreePhase, // 三相(空值表示)
-}
 
 /// 回路编号 - 用于按照输出端口连接顺序为回路分配编号
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -185,7 +178,7 @@ impl CircuitNumber {
 pub enum BreakerType {
     ACB,      //框架断路器
     MCCB,     // 塑壳断路器
-    MCCB_RCBO, //塑壳漏电断路器
+    MCCBRCBO, //塑壳漏电断路器
     MCB,      // 微型断路器
     RCBO,     //漏电断路器
     IS,       //隔离开关
@@ -197,7 +190,7 @@ impl BreakerType {
         match self {
             BreakerType::ACB => "ACB",
             BreakerType::MCCB => "MCCB",
-            BreakerType::MCCB_RCBO => "MCCB-RCBO",
+            BreakerType::MCCBRCBO => "MCCB-RCBO",
             BreakerType::MCB => "MCB",
             BreakerType::RCBO => "RCBO",
             BreakerType::IS => "IS",
@@ -230,7 +223,6 @@ impl FrameCurrent {
             FrameCurrent::A800 => "800",
         }
     }
-    
     pub fn to_f64(&self) -> f64 {
         match self {
             FrameCurrent::A63 => 63.0,
@@ -303,19 +295,7 @@ impl Pole {
             Pole::P1N => "1P+N",
             Pole::P3N => "3P+N",
         }
-    }
-    
-    /// 获取极数对应的数值
-    pub fn to_u32(&self) -> u32 {
-        match self {
-            Pole::P1 => 1,
-            Pole::P2 => 2,
-            Pole::P3 => 3,
-            Pole::P4 => 4,
-            Pole::P1N => 2,
-            Pole::P3N => 4,
-        }
-    }
+    } 
 }
 
 /// 脱扣曲线

@@ -20,6 +20,7 @@ impl CircuitType {
 }
 
 /// 回路用途枚举
+/// 需根据实际用途进行定义
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CircuitPurpose {
     /// 照明回路
